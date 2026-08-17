@@ -9,6 +9,12 @@ A port of [anthropics/claude-desktop-buddy](https://github.com/anthropics/claude
 
 The upstream firmware targets the M5StickC Plus. The two boards share most of their silicon (the same MPU6886 and AXP192), so this is a light port with UI compacted for the smaller display, not a rewrite.
 
+
+<p align="center">
+  <img src="docs/device-ported.png" alt="M5StickC running the buddy firmware" width="500">
+</p>
+
+
 | | Original M5StickC | M5StickC Plus |
 | --- | --- | --- |
 | Display | ST7735S, **80 × 160** | ST7789, 135 × 240 |
