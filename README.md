@@ -1,172 +1,190 @@
-# claude-desktop-buddy
+# Claude Desktop Buddy for M5StickC
 
-Claude for macOS and Windows can connect Claude Cowork and Claude Code to
-maker devices over BLE, so developers and makers can build hardware that
-displays permission prompts, recent messages, and other interactions. We've
-been impressed by the creativity of the maker community around Claude -
-providing a lightweight, opt-in API is our way of making it easier to build
-fun little hardware devices that integrate with Claude.
+[![GitHub Actions Status](https://github.com/ojeda-e/claude-desktop-buddy-M5StickC/workflows/CI/badge.svg)](https://github.com/ojeda-e/claude-desktop-buddy-M5StickC/actions?query=workflow%3ACI)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ojeda-e/claude-desktop-buddy-M5StickC/blob/main/LICENSE)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-espressif32-orange.svg)](https://platformio.org/)
+[![Board](https://img.shields.io/badge/board-M5StickC-blue.svg)](https://docs.m5stack.com/en/core/m5stickc)
 
-> **Building your own device?** You don't need any of the code here. See
-> **[REFERENCE.md](REFERENCE.md)** for the wire protocol: Nordic UART
-> Service UUIDs, JSON schemas, and the folder push transport.
+A port of [anthropics/claude-desktop-buddy](https://github.com/anthropics/claude-desktop-buddy) to the **original M5StickC** (80 × 160 ST7735S).
 
-As an example, we built a desk pet on ESP32 that lives off permission
-approvals and interaction with Claude. It sleeps when nothing's happening,
-wakes when sessions start, gets visibly impatient when an approval prompt is
-waiting, and lets you approve or deny right from the device.
+The upstream firmware targets the M5StickC Plus. The two boards share most of their silicon (the same MPU6886 and AXP192), so this is a light port with UI compacted for the smaller display, not a rewrite.
 
-<p align="center">
-  <img src="docs/device.jpg" alt="M5StickC Plus running the buddy firmware" width="500">
-</p>
+| | Original M5StickC | M5StickC Plus |
+| --- | --- | --- |
+| Display | ST7735S, **80 × 160** | ST7789, 135 × 240 |
+| Arduino library | `M5StickC` | `M5StickCPlus` |
+| Buzzer | none | present |
 
-## Hardware
+## Features
 
-The firmware targets ESP32 with the Arduino framework. As written, it
-depends on the M5StickCPlus library for its display, IMU, and button
-drivers—so you'll need that board, or a fork that swaps those drivers for
-your own pin layout.
+With this firmware you can:
 
-## Flashing
+- Run the Claude Hardware Buddy on an original **M5StickC**
+- Pick from **18 ASCII pets**, scaled for the 80 × 160 screen
+- Approve or deny Claude tool prompts from the stick
+- Track mood, fed, energy, level, prompts, and tokens on compact multi-page screens
+- Pair over Bluetooth with Claude Desktop / Cowork
 
-Install
-[PlatformIO Core](https://docs.platformio.org/en/latest/core/installation/),
-then:
+## Requirements
+
+- An original **M5StickC** (not Plus / Plus2)
+- A **USB-C** cable
+- **macOS** (steps below. Linux works with the same `pio` commands and `/dev/ttyUSB*` ports)
+- [PlatformIO Core](https://docs.platformio.org/en/latest/core/installation/)
+- Claude Desktop or Claude Cowork with Developer Mode
+
+## Installation
+
+### 1. Install PlatformIO
+
+On macOS with Homebrew:
 
 ```bash
-pio run -t upload
+brew install platformio
+pio --version
 ```
 
-If you're starting from a previously-flashed device, wipe it first:
+Or follow the [PlatformIO install docs](https://docs.platformio.org/en/latest/core/installation/) for other platforms.
+
+### 2. Clone this repository
 
 ```bash
-pio run -t erase && pio run -t upload
+git clone https://github.com/ojeda-e/claude-desktop-buddy-M5StickC.git
+cd claude-desktop-buddy-M5StickC
 ```
 
-Once running, you can also wipe everything from the device itself: **hold A
-→ settings → reset → factory reset → tap twice**.
+The M5StickC port is already applied in this fork. No extra patching step.
 
-## Pairing
+### 3. Find the serial port
 
-To pair your device with Claude, first enable developer mode (**Help →
-Troubleshooting → Enable Developer Mode**). Then, open the Hardware Buddy
-window in **Developer → Open Hardware Buddy…**, click **Connect**, and pick
-your device from the list. macOS will prompt for Bluetooth permission on
-first connect; grant it.
+List serial devices **before** plugging in the stick:
 
-<p align="center">
-  <img src="docs/menu.png" alt="Developer → Open Hardware Buddy… menu item" width="420">
-  <img src="docs/hardware-buddy-window.png" alt="Hardware Buddy window with Connect button and folder drop target" width="420">
-</p>
-
-Once paired, the bridge auto-reconnects whenever both sides are awake.
-
-If discovery isn't finding the stick:
-
-- Make sure it's awake (any button press)
-- Check the stick's settings menu → bluetooth is on
-
-## Controls
-
-|                         | Normal               | Pet         | Info        | Approval    |
-| ----------------------- | -------------------- | ----------- | ----------- | ----------- |
-| **A** (front)           | next screen          | next screen | next screen | **approve** |
-| **B** (right)           | scroll transcript    | next page   | next page   | **deny**    |
-| **Hold A**              | menu                 | menu        | menu        | menu        |
-| **Power** (left, short) | toggle screen off    |             |             |             |
-| **Power** (left, ~6s)   | hard power off       |             |             |             |
-| **Shake**               | dizzy                |             |             | —           |
-| **Face-down**           | nap (energy refills) |             |             |             |
-
-The screen auto-powers-off after 30s of no interaction (kept on while an
-approval prompt is up). Any button press wakes it.
-
-## ASCII pets
-
-Eighteen pets, each with seven animations (sleep, idle, busy, attention,
-celebrate, dizzy, heart). Menu → "next pet" cycles them with a counter.
-Choice persists to NVS.
-
-## GIF pets
-
-If you want a custom GIF character instead of an ASCII buddy, drag a
-character pack folder onto the drop target in the Hardware Buddy window. The
-app streams it over BLE and the stick switches to GIF mode live. **Settings
-→ delete char** reverts to ASCII mode.
-
-A character pack is a folder with `manifest.json` and 96px-wide GIFs:
-
-```json
-{
-  "name": "bufo",
-  "colors": {
-    "body": "#6B8E23",
-    "bg": "#000000",
-    "text": "#FFFFFF",
-    "textDim": "#808080",
-    "ink": "#000000"
-  },
-  "states": {
-    "sleep": "sleep.gif",
-    "idle": ["idle_0.gif", "idle_1.gif", "idle_2.gif"],
-    "busy": "busy.gif",
-    "attention": "attention.gif",
-    "celebrate": "celebrate.gif",
-    "dizzy": "dizzy.gif",
-    "heart": "heart.gif"
-  }
-}
+```bash
+ls /dev/cu.usbserial-*
 ```
 
-State values can be a single filename or an array. Arrays rotate: each
-loop-end advances to the next GIF, useful for an idle activity carousel so
-the home screen doesn't loop one clip forever.
+Connect the M5StickC over USB-C, wait a few seconds, and list again. The new entry is your device, for example:
 
-GIFs are 96px wide; height up to ~140px stays on a 135×240 portrait screen.
-Crop tight to the character — transparent margins waste screen and shrink
-the sprite. `tools/prep_character.py` handles the resize: feed it source
-GIFs at any sizes and it produces a 96px-wide set where the character is the
-same scale in every state.
-
-The whole folder must fit under 1.8MB —
-`gifsicle --lossy=80 -O3 --colors 64` typically cuts 40–60%.
-
-See `characters/bufo/` for a working example.
-
-If you're iterating on a character and would rather skip the BLE round-trip,
-`tools/flash_character.py characters/bufo` stages it into `data/` and runs
-`pio run -t uploadfs` directly over USB.
-
-## The seven states
-
-| State       | Trigger                     | Feel                        |
-| ----------- | --------------------------- | --------------------------- |
-| `sleep`     | bridge not connected        | eyes closed, slow breathing |
-| `idle`      | connected, nothing urgent   | blinking, looking around    |
-| `busy`      | sessions actively running   | sweating, working           |
-| `attention` | approval pending            | alert, **LED blinks**       |
-| `celebrate` | level up (every 50K tokens) | confetti, bouncing          |
-| `dizzy`     | you shook the stick         | spiral eyes, wobbling       |
-| `heart`     | approved in under 5s        | floating hearts             |
-
-## Project layout
-
-```
-src/
-  main.cpp       — loop, state machine, UI screens
-  buddy.cpp      — ASCII species dispatch + render helpers
-  buddies/       — one file per species, seven anim functions each
-  ble_bridge.cpp — Nordic UART service, line-buffered TX/RX
-  character.cpp  — GIF decode + render
-  data.h         — wire protocol, JSON parse
-  xfer.h         — folder push receiver
-  stats.h        — NVS-backed stats, settings, owner, species choice
-characters/      — example GIF character packs
-tools/           — generators and converters
+```text
+/dev/cu.usbserial-XXXXXXXXXX
 ```
 
-## Availability
+> [!NOTE]
+> PlatformIO accepts either `/dev/cu.usbserial-…` or `/dev/tty.usbserial-…` on macOS. The original M5StickC uses an FTDI chip. Modern macOS includes the driver.
 
-The BLE API is only available when the desktop apps are in developer mode
-(**Help → Troubleshooting → Enable Developer Mode**). It's intended for
-makers and developers and isn't an officially supported product feature.
+### 4. Build
+
+```bash
+pio run
+```
+
+The first run downloads the toolchain and libraries. Look for `[SUCCESS]` at the end. A healthy build looks roughly like:
+
+```text
+RAM:   [==        ]  22.5% (used 73572 bytes from 327680 bytes)
+Flash: [======    ]  64.8% (used 1357989 bytes from 2097152 bytes)
+========================= [SUCCESS] Took ~10-20 seconds =========================
+```
+
+### 5. Flash
+
+Erase once if you previously flashed a different partition layout, then upload (replace the port with yours):
+
+```bash
+pio run -t erase  --upload-port /dev/tty.usbserial-XXXXXXXXXX
+pio run -t upload --upload-port /dev/tty.usbserial-XXXXXXXXXX
+```
+
+On boot the pet appears **asleep**. That is expected until Claude is connected.
+
+## Usage
+
+> [!NOTE]
+> **Buttons on the StickC:** **A** is the big front button (M5 logo face). **B** is the small button on the right edge. Power is on the left edge. Leave it alone for normal use.
+>
+> Rule of thumb: **A** moves the highlight or changes screen. **B** selects, pages, or confirms.
+
+### Pick a pet
+
+1. Tap **A** to wake the screen.
+2. **Hold A** (~1s) to open the menu.
+3. Press **B** to enter **settings**.
+4. Tap **A** until **ascii pet** is highlighted.
+5. Press **B** to cycle species.
+
+| Index | ASCII pet |
+|------:|-----------|
+| 1 | capybara |
+| 2 | duck |
+| 3 | goose |
+| 4 | blob |
+| 5 | cat |
+| 6 | dragon |
+| 7 | octopus |
+| 8 | owl |
+| 9 | penguin |
+| 10 | turtle |
+| 11 | snail |
+| 12 | ghost |
+| 13 | axolotl |
+| 14 | cactus |
+| 15 | robot |
+| 16 | rabbit |
+| 17 | mushroom |
+| 18 | chonk |
+
+### Pair with Claude
+
+1. In Claude Desktop or Cowork: **Help → Troubleshooting → Enable Developer Mode**.
+2. Open **Developer → Open Hardware Buddy…**.
+3. Wake the stick (tap **A**. A dark screen will not advertise over Bluetooth).
+4. Click **Connect** and pick your device. Grant the macOS Bluetooth permission if prompted.
+5. When the bridge connects, the pet should wake from asleep to idle.
+
+### Screens on the stick
+
+- **Home:** pet animation and transcript HUD.
+- **Pet** (**A** to reach it, **B** pages): meters, counters (including prompts), and a short how-to.
+- **Info** (**A** again, **B** pages): about, buttons, Claude link stats, device, Bluetooth, credits.
+
+Face-down the stick to nap and refill energy. Flip it back up to wake.
+
+## Troubleshooting
+
+**Nothing in the device list?**  
+Tap **A** to wake the stick. Confirm Bluetooth is on: hold **A** → settings → bluetooth.
+
+**macOS never asked for Bluetooth, or you dismissed it?**  
+System Settings → Privacy & Security → Bluetooth. Allow Claude, then Connect again.
+
+**Build fails after a git pull?**  
+Run `pio run` once more so PlatformIO can refresh libraries. Erase before upload if the partition table changed.
+
+## What changed vs upstream
+
+- Display library, resolution (80 × 160), RTC method names, and buzzer stubs for the original StickC
+- ASCII pet canvas fixes (centering / offset) for the smaller panel
+- Multi-page pet and info UI with short labels so text fits ~12 characters per line
+- `prompts` counter on the stats page (permission prompts received)
+
+For the BLE protocol contract, see [REFERENCE.md](REFERENCE.md).
+
+## Contributing
+
+This is a small board-specific port, not a catch-all firmware tree.
+
+**Welcome here:** fixes that make this StickC build, flash, pair, or render correctly, plus clarifications to docs that are wrong for this board.
+
+**Better as a fork of your own:** new boards, large features, new pets or screens. Same idea as [upstream](https://github.com/anthropics/claude-desktop-buddy/blob/main/CONTRIBUTING.md): keep the BLE contract, build the device you want.
+
+## License
+
+Source code is available under the MIT License (see [LICENSE](LICENSE)).
+
+Ported to the original M5StickC by [Mia Ojeda](https://github.com/ojeda-e), based on [claude-desktop-buddy](https://github.com/anthropics/claude-desktop-buddy) by Felix Rieseberg / Anthropic.
+
+GIF assets under `characters/bufo/` are third-party artwork. See [LICENSE](LICENSE) for details.
+
+[PlatformIO]: https://platformio.org/
+[REFERENCE.md]: REFERENCE.md
+[LICENSE]: LICENSE
