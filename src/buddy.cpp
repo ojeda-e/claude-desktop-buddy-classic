@@ -1,6 +1,6 @@
 #include "buddy.h"
 #include "buddy_common.h"
-#include <M5StickCPlus.h>
+#include <M5StickC.h>
 #include <string.h>
 
 extern TFT_eSprite spr;
@@ -9,8 +9,8 @@ extern TFT_eSprite spr;
 enum { B_SLEEP, B_IDLE, B_BUSY, B_ATTENTION, B_CELEBRATE, B_DIZZY, B_HEART };
 
 // ──────────────── shared geometry ────────────────
-const int BUDDY_X_CENTER = 67;
-const int BUDDY_CANVAS_W = 135;
+const int BUDDY_CANVAS_W = 80;
+const int BUDDY_X_CENTER = BUDDY_CANVAS_W / 2;  // center of the 80px canvas
 const int BUDDY_Y_BASE   = 30;
 const int BUDDY_Y_OVERLAY = 6;
 const int BUDDY_CHAR_W   = 6;
@@ -41,10 +41,12 @@ static uint8_t _scale = 1;
 
 void buddyPrintLine(const char* line, int yPx, uint16_t color, int xOff) {
   int len = strlen(line);
-  if (_scale > 1) {
-    while (len && line[len-1] == ' ') len--;
-    while (len && *line == ' ')       { line++; len--; }
-  }
+  // Trim padding so each row re-centers on its content, not its padded cell.
+  // Rows have unequal lead/trail spaces (e.g. the robot head vs its mouth);
+  // without this, asymmetric rows sit off-center. Formerly 2x-only, but the
+  // 80px panel renders the main view at 1x, so it must apply at every scale.
+  while (len && line[len-1] == ' ') len--;
+  while (len && *line == ' ')       { line++; len--; }
   int w = len * BUDDY_CHAR_W * _scale;
   int x = BUDDY_X_CENTER - w / 2 + xOff * _scale;
   _tgt->setTextColor(color, BUDDY_BG);
@@ -147,7 +149,10 @@ static uint8_t lastDrawnSpecies = 0xFF;
 void buddyInvalidate() { lastDrawnState = 0xFF; }
 
 void buddySetPeek(bool peek) {
-  uint8_t s = peek ? 1 : 2;
+  // 80px-wide M5StickC panel can't fit a 2x buddy (~96px) — it wraps and
+  // shreds. Render 1x in both peek and full modes. (Plus used 1:2 here.)
+  (void)peek;
+  uint8_t s = 1;
   if (s == _scale) return;
   _scale = s;
   buddyInvalidate();

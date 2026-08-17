@@ -72,7 +72,7 @@ const char* petName();
 void ownerSet(const char* name);
 const char* ownerName();
 #include "stats.h"
-#include <M5StickCPlus.h>
+#include <M5StickC.h>
 
 inline bool xferCommand(JsonDocument& doc) {
   const char* cmd = doc["cmd"];

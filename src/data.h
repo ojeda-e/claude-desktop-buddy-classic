@@ -82,7 +82,7 @@ static void _applyJson(const char* line, TamaState* out) {
     RTC_DateTypeDef dt = { (uint8_t)lt.tm_wday, (uint8_t)(lt.tm_mon + 1),
                            (uint8_t)lt.tm_mday, (uint16_t)(lt.tm_year + 1900) };
     M5.Rtc.SetTime(&tm);
-    M5.Rtc.SetDate(&dt);
+    M5.Rtc.SetData(&dt);
     extern uint32_t _clkLastRead;
     _clkLastRead = 0;   // force re-read so _clkDt and _rtcValid agree
     _rtcValid = true;

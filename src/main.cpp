@@ -1,4 +1,4 @@
-#include <M5StickCPlus.h>
+#include <M5StickC.h>
 #include <LittleFS.h>
 #include <stdarg.h>
 #include "ble_bridge.h"
@@ -20,7 +20,7 @@ static void startBt() {
 
 #include "character.h"
 #include "stats.h"
-const int W = 135, H = 240;
+const int W = 80, H = 160;
 const int CX = W / 2;
 const int CY_BASE = 120;
 const int LED_PIN = 10;          // red LED, active-low
@@ -50,7 +50,7 @@ enum DisplayMode { DISP_NORMAL, DISP_PET, DISP_INFO, DISP_COUNT };
 uint8_t displayMode = DISP_NORMAL;
 uint8_t infoPage = 0;
 uint8_t petPage = 0;
-const uint8_t PET_PAGES = 2;
+const uint8_t PET_PAGES = 3;
 uint8_t msgScroll = 0;
 uint16_t lastLineGen = 0;
 char     lastPromptId[40] = "";
@@ -109,7 +109,7 @@ static void wake() {
 bool     responseSent = false;
 
 static void beep(uint16_t freq, uint16_t dur) {
-  if (settings().sound) M5.Beep.tone(freq, dur);
+  (void)freq; (void)dur;  // no buzzer on M5StickC
 }
 
 static void sendCmd(const char* json) {
@@ -118,9 +118,9 @@ static void sendCmd(const char* json) {
   bleWrite((const uint8_t*)json, n);
   bleWrite((const uint8_t*)"\n", 1);
 }
-const uint8_t INFO_PAGES = 6;
-const uint8_t INFO_PG_BUTTONS = 1;
-const uint8_t INFO_PG_CREDITS = 5;
+const uint8_t INFO_PAGES = 9;
+const uint8_t INFO_PG_BUTTONS = 3;
+const uint8_t INFO_PG_CREDITS = 7;
 
 void applyDisplayMode() {
   bool peek = displayMode != DISP_NORMAL;
@@ -358,7 +358,7 @@ static void clockRefreshRtc() {
   _clkLastRead = millis();
   _onUsb = M5.Axp.GetVBusVoltage() > 4.0f;
   M5.Rtc.GetTime(&_clkTm);
-  M5.Rtc.GetDate(&_clkDt);
+  M5.Rtc.GetData(&_clkDt);
 }
 
 static void clockUpdateOrient() {
@@ -418,19 +418,19 @@ static void drawClock() {
 
   if (clockOrient == 0) {
     paintedOrient = 0;
-    // Bottom half — buddy naturally lives at y=0..82, GIF peeks at top
-    // via peek mode. Clearing from 90 leaves both untouched.
+    // StickC: size-4 "12:34" is 120px wide on W=80 — first digit clips.
+    // Size 2 is 60px and centers cleanly. Clear below the pet.
     spr.fillRect(0, 90, W, H - 90, p.bg);
     spr.setTextDatum(MC_DATUM);
-    spr.setTextSize(4); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 140);
-    spr.setTextSize(2); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 175);
-    spr.setTextSize(1);                                     spr.drawString(dl, CX, 200);
+    spr.setTextSize(2); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 112);
+    spr.setTextSize(1); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 132);
+                                                        spr.drawString(dl, CX, 146);
     spr.setTextDatum(TL_DATUM);
     return;
   }
 
-  // Landscape: 240×135 direct-to-LCD. Full fill only on entry; after that
-  // text glyph bg cells repaint themselves and the pet box (small, ~90×50)
+  // Landscape: 160×80 direct-to-LCD. Full fill only on entry; after that
+  // text glyph bg cells repaint themselves and the pet box (small, ~72×70)
   // gets a fillRect each pet tick — small enough not to tear.
   M5.Lcd.setRotation(clockOrient);
   static uint8_t lastSec = 0xFF;
@@ -441,12 +441,14 @@ static void drawClock() {
   // for nothing. Gate on the second changing (or full repaint).
   if (repaint || _clkTm.Seconds != lastSec) {
     lastSec = _clkTm.Seconds;
+    // StickC landscape is 160 wide — keep clock in the right half (~x=118)
+    // with short date so "Mon Aug 16" still fits.
     char wdl[12]; snprintf(wdl, sizeof(wdl), "%s %s %02u", DOW[clockDow()], MON[mi], _clkDt.Date);
     char ssl[3]; snprintf(ssl, sizeof(ssl), "%02u", _clkTm.Seconds);
     M5.Lcd.setTextDatum(MC_DATUM);
-    M5.Lcd.setTextSize(3); M5.Lcd.setTextColor(p.text, p.bg);    M5.Lcd.drawString(hm, 170, 42);
-    M5.Lcd.setTextSize(2); M5.Lcd.setTextColor(p.textDim, p.bg); M5.Lcd.drawString(ssl, 170, 72);
-                                                                  M5.Lcd.drawString(wdl, 170, 102);
+    M5.Lcd.setTextSize(2); M5.Lcd.setTextColor(p.text, p.bg);    M5.Lcd.drawString(hm, 118, 22);
+    M5.Lcd.setTextSize(1); M5.Lcd.setTextColor(p.textDim, p.bg); M5.Lcd.drawString(ssl, 118, 42);
+                                                                  M5.Lcd.drawString(wdl, 118, 58);
     M5.Lcd.setTextDatum(TL_DATUM);
     M5.Lcd.setTextSize(1);
   }
@@ -459,10 +461,9 @@ static void drawClock() {
     lastPetTick = millis();
     if (buddyMode) {
       // ASCII glyphs don't self-clear; wipe the box each tick. Species
-      // hardcode BUDDY_X_CENTER=67 / BUDDY_Y_OVERLAY=6 for particles so
-      // keep portrait coords and just swap the surface — pet lands
-      // upper-left of landscape, which is where we want it anyway.
-      M5.Lcd.fillRect(0, 0, 115, 90, p.bg);
+      // draw particles relative to BUDDY_X_CENTER (=40), so the pet lands
+      // on the left of landscape, clear of the clock on the right.
+      M5.Lcd.fillRect(0, 0, 82, 80, p.bg);
       buddyRenderTo(&M5.Lcd, activeState);
     } else {
       // Full-frame GIFs paint every pixel (transparent → pal.bg), so a
@@ -470,7 +471,7 @@ static void drawClock() {
       // last scanline. The entry fillScreen on paintedOrient change
       // already covers the surround.
       characterSetState(activeState);
-      characterRenderTo(&M5.Lcd, 57, 45);
+      characterRenderTo(&M5.Lcd, 40, 40);
     }
   }
   M5.Lcd.setRotation(0);
@@ -520,12 +521,15 @@ void drawPasskey() {
   spr.fillSprite(p.bg);
   spr.setTextSize(1);
   spr.setTextColor(p.textDim, p.bg);
-  spr.setCursor(8, 56);  spr.print("BLUETOOTH PAIRING");
-  spr.setCursor(8, 184); spr.print("enter on desktop:");
-  spr.setTextSize(3);
+  spr.setCursor(4, 36);  spr.print("BLUETOOTH");
+  spr.setCursor(4, 46);  spr.print("PAIRING");
+  spr.setCursor(4, 120); spr.print("enter on");
+  spr.setCursor(4, 130); spr.print("desktop:");
+  spr.setTextSize(2);
   spr.setTextColor(p.text, p.bg);
   char b[8]; snprintf(b, sizeof(b), "%06lu", (unsigned long)blePasskey());
-  spr.setCursor((W - 18 * 6) / 2, 110);
+  const int DIG_W = 12;  // default font width × text size 2
+  spr.setCursor((W - DIG_W * 6) / 2, 72);
   spr.print(b);
 }
 
@@ -541,56 +545,59 @@ void drawInfo() {
   };
 
   if (infoPage == 0) {
+    // StickC is ~12 chars wide at size 1 — keep lines short.
     _infoHeader(p, y, "ABOUT", infoPage);
     spr.setTextColor(p.textDim, p.bg);
-    ln("I watch your Claude");
-    ln("desktop sessions.");
-    y += 6;
-    ln("I sleep when nothing's");
-    ln("happening, wake when");
-    ln("you start working,");
-    ln("get impatient when");
-    ln("approvals pile up.");
-    y += 6;
-    spr.setTextColor(p.text, p.bg);
-    ln("Press A on a prompt");
-    ln("to approve from here.");
-    y += 6;
-    spr.setTextColor(p.textDim, p.bg);
-    ln("18 species. Settings");
-    ln("> ascii pet to cycle.");
+    ln("I watch your");
+    ln("Claude");
+    ln("desktop");
+    ln("sessions.");
 
   } else if (infoPage == 1) {
-    _infoHeader(p, y, "BUTTONS", infoPage);
-    spr.setTextColor(p.text, p.bg);    ln("A   front");
-    spr.setTextColor(p.textDim, p.bg); ln("    next screen");
-    ln("    approve prompt"); y += 4;
-    spr.setTextColor(p.text, p.bg);    ln("B   right side");
-    spr.setTextColor(p.textDim, p.bg); ln("    next page");
-    ln("    deny prompt"); y += 4;
-    spr.setTextColor(p.text, p.bg);    ln("hold A");
-    spr.setTextColor(p.textDim, p.bg); ln("    menu"); y += 4;
-    spr.setTextColor(p.text, p.bg);    ln("Power  left side");
-    spr.setTextColor(p.textDim, p.bg); ln("    tap = screen off");
-    ln("    hold 6s = off");
+    _infoHeader(p, y, "ABOUT", infoPage);
+    spr.setTextColor(p.textDim, p.bg);
+    ln("I sleep when");
+    ln("idle, wake");
+    ln("when you");
+    ln("work, get");
+    ln("impatient");
+    ln("when");
+    ln("approvals");
+    ln("pile up.");
 
   } else if (infoPage == 2) {
-    _infoHeader(p, y, "CLAUDE", infoPage);
-    spr.setTextColor(p.textDim, p.bg);
-    ln("  sessions  %u", tama.sessionsTotal);
-    ln("  running   %u", tama.sessionsRunning);
-    ln("  waiting   %u", tama.sessionsWaiting);
-    y += 8;
+    _infoHeader(p, y, "ABOUT", infoPage);
     spr.setTextColor(p.text, p.bg);
-    ln("LINK");
-    spr.setTextColor(p.textDim, p.bg);
-    ln("  via       %s", dataScenarioName());
-    ln("  ble       %s", !bleConnected() ? "-" : bleSecure() ? "encrypted" : "OPEN");
-    uint32_t age = (millis() - tama.lastUpdated) / 1000;
-    ln("  last msg  %lus", (unsigned long)age);
-    ln("  state     %s", stateNames[activeState]);
+    ln("Press A on a");
+    ln("prompt to");
+    ln("approve");
+    ln("here.");
 
   } else if (infoPage == 3) {
+    // Compact for StickC: avoid 4-space indents (they burn ~4 of ~12 chars).
+    _infoHeader(p, y, "BUTTONS", infoPage);
+    spr.setTextColor(p.text, p.bg);    ln("A front");
+    spr.setTextColor(p.textDim, p.bg); ln("next/approve");
+    spr.setTextColor(p.text, p.bg);    ln("B right");
+    spr.setTextColor(p.textDim, p.bg); ln("page/deny");
+    spr.setTextColor(p.text, p.bg);    ln("hold A menu");
+    spr.setTextColor(p.text, p.bg);    ln("PWR left");
+    spr.setTextColor(p.textDim, p.bg); ln("tap/hold 6s");
+
+  } else if (infoPage == 4) {
+    _infoHeader(p, y, "CLAUDE", infoPage);
+    spr.setTextColor(p.textDim, p.bg);
+    ln("sess %u", tama.sessionsTotal);
+    ln("run  %u", tama.sessionsRunning);
+    ln("wait %u", tama.sessionsWaiting);
+    ln("via %.8s", dataScenarioName());
+    ln("ble %s", !bleConnected() ? "-" : bleSecure() ? "enc" : "open");
+    uint32_t age = (millis() - tama.lastUpdated) / 1000;
+    ln("last %lus", (unsigned long)age);
+    spr.setTextColor(p.text, p.bg);
+    ln("%s", stateNames[activeState]);
+
+  } else if (infoPage == 5) {
     _infoHeader(p, y, "DEVICE", infoPage);
 
     int vBat_mV = (int)(M5.Axp.GetBatVoltage() * 1000);
@@ -601,6 +608,8 @@ void drawInfo() {
     bool usb = vBus_mV > 4000;
     bool charging = usb && iBat_mA > 1;
     bool full = usb && vBat_mV > 4100 && iBat_mA < 10;
+    const char* st = full ? "full" : (charging ? "chg" : (usb ? "usb" : "bat"));
+    uint8_t stW = full ? 4 : 3;
 
     spr.setTextColor(p.text, p.bg);
     spr.setTextSize(2);
@@ -608,82 +617,72 @@ void drawInfo() {
     spr.printf("%d%%", pct);
     spr.setTextSize(1);
     spr.setTextColor(full ? GREEN : (charging ? HOT : p.textDim), p.bg);
-    spr.setCursor(60, y + 4);
-    spr.print(full ? "full" : (charging ? "charging" : (usb ? "usb" : "battery")));
-    y += 20;
+    spr.setCursor(W - 4 - stW * 6, y + 4);
+    spr.print(st);
+    y += 18;
 
     spr.setTextColor(p.textDim, p.bg);
-    ln("  battery  %d.%02dV", vBat_mV/1000, (vBat_mV%1000)/10);
-    ln("  current  %+dmA", iBat_mA);
-    if (usb) ln("  usb in   %d.%02dV", vBus_mV/1000, (vBus_mV%1000)/10);
-    y += 8;
-
-    spr.setTextColor(p.text, p.bg);
-    ln("SYSTEM");
-    spr.setTextColor(p.textDim, p.bg);
-    if (ownerName()[0]) ln("  owner    %s", ownerName());
+    ln("%d.%02dV %+dmA", vBat_mV/1000, (vBat_mV%1000)/10, iBat_mA);
     uint32_t up = millis() / 1000;
-    ln("  uptime   %luh %02lum", up / 3600, (up / 60) % 60);
-    ln("  heap     %uKB", ESP.getFreeHeap() / 1024);
-    ln("  bright   %u/4", brightLevel);
-    ln("  bt       %s", settings().bt ? (dataBtActive() ? "linked" : "on") : "off");
-    ln("  temp     %dC", (int)M5.Axp.GetTempInAXP192());
+    ln("up %luh%02lum", up / 3600, (up / 60) % 60);
+    ln("bt %s", settings().bt ? (dataBtActive() ? "linked" : "on") : "off");
+    ln("%dC", (int)M5.Axp.GetTempInAXP192());
 
-  } else if (infoPage == 4) {
+  } else if (infoPage == 6) {
+    // StickC: size-2 status must be ≤4 chars; MAC without colons = 12 chars.
     _infoHeader(p, y, "BLUETOOTH", infoPage);
     bool linked = settings().bt && dataBtActive();
+    const char* st = linked ? "link" : (settings().bt ? "disc" : "off");
 
     spr.setTextColor(linked ? GREEN : (settings().bt ? HOT : p.textDim), p.bg);
     spr.setTextSize(2);
     spr.setCursor(4, y);
-    spr.print(linked ? "linked" : (settings().bt ? "discover" : "off"));
+    spr.print(st);
     spr.setTextSize(1);
-    y += 20;
+    y += 18;
 
-    spr.setTextColor(p.textDim, p.bg);
     spr.setTextColor(p.text, p.bg);
-    ln("  %s", btName);
+    ln("%.12s", btName);
     spr.setTextColor(p.textDim, p.bg);
     uint8_t mac[6] = {0};
     esp_read_mac(mac, ESP_MAC_BT);
-    ln("  %02X:%02X:%02X:%02X:%02X:%02X",
+    ln("%02X%02X%02X%02X%02X%02X",
        mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-    y += 8;
 
     if (linked) {
       uint32_t age = (millis() - tama.lastUpdated) / 1000;
-      ln("  last msg  %lus", (unsigned long)age);
+      ln("last %lus", (unsigned long)age);
     } else if (settings().bt) {
-      spr.setTextColor(p.text, p.bg);
-      ln("TO PAIR");
-      spr.setTextColor(p.textDim, p.bg);
-      ln(" Open Claude desktop");
-      ln(" > Developer");
-      ln(" > Hardware Buddy");
       y += 4;
-      ln(" auto-connects via BLE");
+      spr.setTextColor(p.text, p.bg);
     }
+
+  } else if (infoPage == 7) {
+    _infoHeader(p, y, "CREDITS", infoPage);
+    spr.setTextColor(p.text, p.bg);
+    ln("Ported to");
+    ln("M5StickC by");
+    spr.setTextColor(p.text, p.bg);
+    ln("Mia Ojeda");
+    y += 4;
+    spr.setTextColor(p.textDim, p.bg);
+    ln("ojeda-e/");
+    ln("claude-");
+    ln("desktop-");
+    ln("buddy-classic");
 
   } else {
     _infoHeader(p, y, "CREDITS", infoPage);
     spr.setTextColor(p.textDim, p.bg);
-    ln("made by");
-    y += 4;
+    ln("based on");
     spr.setTextColor(p.text, p.bg);
-    ln("Felix Rieseberg");
-    y += 12;
+    ln("Felix");
+    ln("Rieseberg");
     spr.setTextColor(p.textDim, p.bg);
-    ln("source");
-    y += 4;
-    spr.setTextColor(p.text, p.bg);
-    ln("github.com/anthropics");
-    ln("/claude-desktop-buddy");
-    y += 12;
-    spr.setTextColor(p.textDim, p.bg);
-    ln("hardware");
-    y += 4;
-    ln("M5StickC Plus");
-    ln("ESP32 + AXP192");
+    ln("anthropics/");
+    ln("claude-");
+    ln("desktop-");
+    ln("buddy");
   }
 }
 
@@ -780,108 +779,107 @@ static void tinyHeart(int x, int y, bool filled, uint16_t col) {
   }
 }
 
-static void drawPetStats(const Palette& p) {
+// Pet page 0: meters + level (fits the StickC's short panel under the ASCII art).
+// Mood is 4 hearts; energy is 5 bars; fed is 10 dots. Plus spacing was for
+// W=135 — on W=80 it clipped to ~2 of each.
+static void drawPetMeters(const Palette& p) {
   const int TOP = 70;
   spr.fillRect(0, TOP, W, H - TOP, p.bg);
   spr.setTextSize(1);
-  int y = TOP + 16;
+  int y = TOP + 14;  // room for the PET header drawn by drawPet()
 
   spr.setTextColor(p.textDim, p.bg);
-  spr.setCursor(6, y - 2); spr.print("mood");
+  spr.setCursor(4, y); spr.print("mood");
+  y += 9;
   uint8_t mood = statsMoodTier();
   uint16_t moodCol = (mood >= 3) ? RED : (mood >= 2) ? HOT : p.textDim;
-  for (int i = 0; i < 4; i++) tinyHeart(54 + i * 16, y + 2, i < mood, moodCol);
+  for (int i = 0; i < 4; i++) tinyHeart(10 + i * 18, y, i < mood, moodCol);
 
-  y += 20;
-  spr.setCursor(6, y - 2); spr.print("fed");
+  y += 12;
+  spr.setCursor(4, y); spr.print("fed");
+  y += 9;
   uint8_t fed = statsFedProgress();
   for (int i = 0; i < 10; i++) {
-    int px = 38 + i * 9;
-    if (i < fed) spr.fillCircle(px, y + 1, 2, p.body);
-    else spr.drawCircle(px, y + 1, 2, p.textDim);
+    int px = 8 + i * 7;
+    if (i < fed) spr.fillCircle(px, y, 2, p.body);
+    else spr.drawCircle(px, y, 2, p.textDim);
   }
 
-  y += 20;
-  spr.setCursor(6, y - 2); spr.print("energy");
+  y += 10;
+  spr.setCursor(4, y); spr.print("energy");
+  y += 9;
   uint8_t en = statsEnergyTier();
   uint16_t enCol = (en >= 4) ? 0x07FF : (en >= 2) ? 0xFFE0 : HOT;
   for (int i = 0; i < 5; i++) {
-    int px = 54 + i * 13;
-    if (i < en) spr.fillRect(px, y - 2, 9, 6, enCol);
-    else spr.drawRect(px, y - 2, 9, 6, p.textDim);
+    int px = 8 + i * 14;
+    if (i < en) spr.fillRect(px, y - 2, 11, 6, enCol);
+    else spr.drawRect(px, y - 2, 11, 6, p.textDim);
   }
 
-  y += 24;
-  spr.fillRoundRect(6, y - 2, 42, 14, 3, p.body);
+  y += 12;
+  spr.fillRoundRect(4, y - 2, 42, 14, 3, p.body);
   spr.setTextColor(p.bg, p.body);
-  spr.setCursor(11, y + 1); spr.printf("Lv %u", stats().level);
+  spr.setCursor(9, y + 1); spr.printf("Lv %u", stats().level);
+}
 
-  y += 20;
+// Pet page 1: numeric counters that used to sit below Lv on the Plus.
+static void drawPetNumbers(const Palette& p) {
+  const int TOP = 70;
+  spr.fillRect(0, TOP, W, H - TOP, p.bg);
+  spr.setTextSize(1);
+  int y = TOP + 16;  // room for the PET header drawn by drawPet()
+
   spr.setTextColor(p.textDim, p.bg);
   spr.setCursor(6, y);
   spr.printf("approved %u", stats().approvals);
-  spr.setCursor(6, y + 10);
+  spr.setCursor(6, y + 12);
   spr.printf("denied   %u", stats().denials);
-  uint32_t nap = stats().napSeconds;
-  spr.setCursor(6, y + 20);
-  spr.printf("napped   %luh%02lum", nap/3600, (nap/60)%60);
+  spr.setCursor(6, y + 24);
+  spr.printf("prompts  %u", stats().prompts);
   auto tokFmt = [&](const char* label, uint32_t v, int yPx) {
     spr.setCursor(6, yPx);
     if (v >= 1000000)   spr.printf("%s%lu.%luM", label, v/1000000, (v/100000)%10);
     else if (v >= 1000) spr.printf("%s%lu.%luK", label, v/1000, (v/100)%10);
     else                spr.printf("%s%lu", label, v);
   };
-  tokFmt("tokens   ", stats().tokens, y + 30);
-  tokFmt("today    ", tama.tokensToday, y + 40);
+  tokFmt("tokens   ", stats().tokens, y + 36);
+  tokFmt("today    ", tama.tokensToday, y + 48);
 }
 
 static void drawPetHowTo(const Palette& p) {
+  // StickC: ~12 chars, ~8 lines under the pet header.
   const int TOP = 70;
   spr.fillRect(0, TOP, W, H - TOP, p.bg);
   spr.setTextSize(1);
-  int y = TOP + 2;
+  int y = TOP + 14;  // room for the PET header drawn by drawPet()
   auto ln = [&](uint16_t c, const char* s) {
-    spr.setTextColor(c, p.bg); spr.setCursor(6, y); spr.print(s); y += 9;
+    spr.setTextColor(c, p.bg); spr.setCursor(4, y); spr.print(s); y += 8;
   };
-  auto gap = [&]() { y += 4; };
-
-  y += 12;  // room for the PET header drawn by drawPet()
 
   ln(p.body,    "MOOD");
-  ln(p.textDim, " approve fast = up");
-  ln(p.textDim, " deny lots = down"); gap();
-
+  ln(p.textDim, "fast=up");
+  ln(p.textDim, "deny=down");
   ln(p.body,    "FED");
-  ln(p.textDim, " 50K tokens =");
-  ln(p.textDim, " level up + confetti"); gap();
-
+  ln(p.textDim, "50K=lv up");
   ln(p.body,    "ENERGY");
-  ln(p.textDim, " face-down to nap");
-  ln(p.textDim, " refills to full"); gap();
-
-  ln(p.textDim, "idle 30s = off");
-  ln(p.textDim, "any button = wake"); gap();
-
-  ln(p.textDim, "A: screens  B: page");
-  ln(p.textDim, "hold A: menu");
+  ln(p.textDim, "face-down");
+  ln(p.textDim, "A/B hold A");
 }
 
 void drawPet() {
   const Palette& p = characterPalette();
   int y = 70;
 
-  if (petPage == 0) drawPetStats(p);
+  if (petPage == 0) drawPetMeters(p);
+  else if (petPage == 1) drawPetNumbers(p);
   else drawPetHowTo(p);
 
-  // Header on top of whichever page drew — title left, counter right
+  // StickC: "Mia's Buddy" overflows into the page counter — show owner only.
   spr.setTextSize(1);
   spr.setTextColor(p.text, p.bg);
   spr.setCursor(4, y + 2);
-  if (ownerName()[0]) {
-    spr.printf("%s's %s", ownerName(), petName());
-  } else {
-    spr.print(petName());
-  }
+  if (ownerName()[0]) spr.print(ownerName());
+  else                spr.print(petName());
   spr.setTextColor(p.textDim, p.bg);
   spr.setCursor(W - 28, y + 2);
   spr.printf("%u/%u", petPage + 1, PET_PAGES);
@@ -939,7 +937,7 @@ void setup() {
   M5.begin();
   M5.Lcd.setRotation(0);
   M5.Imu.Init();
-  M5.Beep.begin();
+  /* no buzzer on M5StickC */
   startBt();
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);   // off
@@ -987,7 +985,7 @@ void setup() {
 
 void loop() {
   M5.update();
-  M5.Beep.update();
+  /* no buzzer on M5StickC */
   t++;
   uint32_t now = millis();
 
@@ -1026,6 +1024,7 @@ void loop() {
     responseSent = false;
     if (tama.promptId[0]) {
       promptArrivedMs = millis();
+      statsOnPrompt();
       wake();
       beep(1200, 80);   // alert chirp
       // Jump to the approval screen no matter what was open — drawApproval
