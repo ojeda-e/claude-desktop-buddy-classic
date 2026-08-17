@@ -839,34 +839,23 @@ static void drawPetNumbers(const Palette& p) {
 }
 
 static void drawPetHowTo(const Palette& p) {
+  // StickC: ~12 chars, ~8 lines under the pet header.
   const int TOP = 70;
   spr.fillRect(0, TOP, W, H - TOP, p.bg);
   spr.setTextSize(1);
-  int y = TOP + 2;
+  int y = TOP + 14;  // room for the PET header drawn by drawPet()
   auto ln = [&](uint16_t c, const char* s) {
-    spr.setTextColor(c, p.bg); spr.setCursor(6, y); spr.print(s); y += 9;
+    spr.setTextColor(c, p.bg); spr.setCursor(4, y); spr.print(s); y += 8;
   };
-  auto gap = [&]() { y += 4; };
-
-  y += 12;  // room for the PET header drawn by drawPet()
 
   ln(p.body,    "MOOD");
-  ln(p.textDim, " approve fast = up");
-  ln(p.textDim, " deny lots = down"); gap();
-
+  ln(p.textDim, "fast=up");
+  ln(p.textDim, "deny=down");
   ln(p.body,    "FED");
-  ln(p.textDim, " 50K tokens =");
-  ln(p.textDim, " level up + confetti"); gap();
-
+  ln(p.textDim, "50K=lv up");
   ln(p.body,    "ENERGY");
-  ln(p.textDim, " face-down to nap");
-  ln(p.textDim, " refills to full"); gap();
-
-  ln(p.textDim, "idle 30s = off");
-  ln(p.textDim, "any button = wake"); gap();
-
-  ln(p.textDim, "A: screens  B: page");
-  ln(p.textDim, "hold A: menu");
+  ln(p.textDim, "face-down");
+  ln(p.textDim, "A/B hold A");
 }
 
 void drawPet() {
