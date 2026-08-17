@@ -118,9 +118,9 @@ static void sendCmd(const char* json) {
   bleWrite((const uint8_t*)json, n);
   bleWrite((const uint8_t*)"\n", 1);
 }
-const uint8_t INFO_PAGES = 6;
-const uint8_t INFO_PG_BUTTONS = 1;
-const uint8_t INFO_PG_CREDITS = 5;
+const uint8_t INFO_PAGES = 9;
+const uint8_t INFO_PG_BUTTONS = 3;
+const uint8_t INFO_PG_CREDITS = 7;
 
 void applyDisplayMode() {
   bool peek = displayMode != DISP_NORMAL;
@@ -542,56 +542,59 @@ void drawInfo() {
   };
 
   if (infoPage == 0) {
+    // StickC is ~12 chars wide at size 1 — keep lines short.
     _infoHeader(p, y, "ABOUT", infoPage);
     spr.setTextColor(p.textDim, p.bg);
-    ln("I watch your Claude");
-    ln("desktop sessions.");
-    y += 6;
-    ln("I sleep when nothing's");
-    ln("happening, wake when");
-    ln("you start working,");
-    ln("get impatient when");
-    ln("approvals pile up.");
-    y += 6;
-    spr.setTextColor(p.text, p.bg);
-    ln("Press A on a prompt");
-    ln("to approve from here.");
-    y += 6;
-    spr.setTextColor(p.textDim, p.bg);
-    ln("18 species. Settings");
-    ln("> ascii pet to cycle.");
+    ln("I watch your");
+    ln("Claude");
+    ln("desktop");
+    ln("sessions.");
 
   } else if (infoPage == 1) {
-    _infoHeader(p, y, "BUTTONS", infoPage);
-    spr.setTextColor(p.text, p.bg);    ln("A   front");
-    spr.setTextColor(p.textDim, p.bg); ln("    next screen");
-    ln("    approve prompt"); y += 4;
-    spr.setTextColor(p.text, p.bg);    ln("B   right side");
-    spr.setTextColor(p.textDim, p.bg); ln("    next page");
-    ln("    deny prompt"); y += 4;
-    spr.setTextColor(p.text, p.bg);    ln("hold A");
-    spr.setTextColor(p.textDim, p.bg); ln("    menu"); y += 4;
-    spr.setTextColor(p.text, p.bg);    ln("Power  left side");
-    spr.setTextColor(p.textDim, p.bg); ln("    tap = screen off");
-    ln("    hold 6s = off");
+    _infoHeader(p, y, "ABOUT", infoPage);
+    spr.setTextColor(p.textDim, p.bg);
+    ln("I sleep when");
+    ln("idle, wake");
+    ln("when you");
+    ln("work, get");
+    ln("impatient");
+    ln("when");
+    ln("approvals");
+    ln("pile up.");
 
   } else if (infoPage == 2) {
-    _infoHeader(p, y, "CLAUDE", infoPage);
-    spr.setTextColor(p.textDim, p.bg);
-    ln("  sessions  %u", tama.sessionsTotal);
-    ln("  running   %u", tama.sessionsRunning);
-    ln("  waiting   %u", tama.sessionsWaiting);
-    y += 8;
+    _infoHeader(p, y, "ABOUT", infoPage);
     spr.setTextColor(p.text, p.bg);
-    ln("LINK");
-    spr.setTextColor(p.textDim, p.bg);
-    ln("  via       %s", dataScenarioName());
-    ln("  ble       %s", !bleConnected() ? "-" : bleSecure() ? "encrypted" : "OPEN");
-    uint32_t age = (millis() - tama.lastUpdated) / 1000;
-    ln("  last msg  %lus", (unsigned long)age);
-    ln("  state     %s", stateNames[activeState]);
+    ln("Press A on a");
+    ln("prompt to");
+    ln("approve");
+    ln("here.");
 
   } else if (infoPage == 3) {
+    // Compact for StickC: avoid 4-space indents (they burn ~4 of ~12 chars).
+    _infoHeader(p, y, "BUTTONS", infoPage);
+    spr.setTextColor(p.text, p.bg);    ln("A front");
+    spr.setTextColor(p.textDim, p.bg); ln("next/approve");
+    spr.setTextColor(p.text, p.bg);    ln("B right");
+    spr.setTextColor(p.textDim, p.bg); ln("page/deny");
+    spr.setTextColor(p.text, p.bg);    ln("hold A menu");
+    spr.setTextColor(p.text, p.bg);    ln("PWR left");
+    spr.setTextColor(p.textDim, p.bg); ln("tap/hold 6s");
+
+  } else if (infoPage == 4) {
+    _infoHeader(p, y, "CLAUDE", infoPage);
+    spr.setTextColor(p.textDim, p.bg);
+    ln("sess %u", tama.sessionsTotal);
+    ln("run  %u", tama.sessionsRunning);
+    ln("wait %u", tama.sessionsWaiting);
+    ln("via %.8s", dataScenarioName());
+    ln("ble %s", !bleConnected() ? "-" : bleSecure() ? "enc" : "open");
+    uint32_t age = (millis() - tama.lastUpdated) / 1000;
+    ln("last %lus", (unsigned long)age);
+    spr.setTextColor(p.text, p.bg);
+    ln("%s", stateNames[activeState]);
+
+  } else if (infoPage == 5) {
     _infoHeader(p, y, "DEVICE", infoPage);
 
     int vBat_mV = (int)(M5.Axp.GetBatVoltage() * 1000);
@@ -602,6 +605,8 @@ void drawInfo() {
     bool usb = vBus_mV > 4000;
     bool charging = usb && iBat_mA > 1;
     bool full = usb && vBat_mV > 4100 && iBat_mA < 10;
+    const char* st = full ? "full" : (charging ? "chg" : (usb ? "usb" : "bat"));
+    uint8_t stW = full ? 4 : 3;
 
     spr.setTextColor(p.text, p.bg);
     spr.setTextSize(2);
@@ -609,82 +614,72 @@ void drawInfo() {
     spr.printf("%d%%", pct);
     spr.setTextSize(1);
     spr.setTextColor(full ? GREEN : (charging ? HOT : p.textDim), p.bg);
-    spr.setCursor(60, y + 4);
-    spr.print(full ? "full" : (charging ? "charging" : (usb ? "usb" : "battery")));
-    y += 20;
+    spr.setCursor(W - 4 - stW * 6, y + 4);
+    spr.print(st);
+    y += 18;
 
     spr.setTextColor(p.textDim, p.bg);
-    ln("  battery  %d.%02dV", vBat_mV/1000, (vBat_mV%1000)/10);
-    ln("  current  %+dmA", iBat_mA);
-    if (usb) ln("  usb in   %d.%02dV", vBus_mV/1000, (vBus_mV%1000)/10);
-    y += 8;
-
-    spr.setTextColor(p.text, p.bg);
-    ln("SYSTEM");
-    spr.setTextColor(p.textDim, p.bg);
-    if (ownerName()[0]) ln("  owner    %s", ownerName());
+    ln("%d.%02dV %+dmA", vBat_mV/1000, (vBat_mV%1000)/10, iBat_mA);
     uint32_t up = millis() / 1000;
-    ln("  uptime   %luh %02lum", up / 3600, (up / 60) % 60);
-    ln("  heap     %uKB", ESP.getFreeHeap() / 1024);
-    ln("  bright   %u/4", brightLevel);
-    ln("  bt       %s", settings().bt ? (dataBtActive() ? "linked" : "on") : "off");
-    ln("  temp     %dC", (int)M5.Axp.GetTempInAXP192());
+    ln("up %luh%02lum", up / 3600, (up / 60) % 60);
+    ln("bt %s", settings().bt ? (dataBtActive() ? "linked" : "on") : "off");
+    ln("%dC", (int)M5.Axp.GetTempInAXP192());
 
-  } else if (infoPage == 4) {
+  } else if (infoPage == 6) {
+    // StickC: size-2 status must be ≤4 chars; MAC without colons = 12 chars.
     _infoHeader(p, y, "BLUETOOTH", infoPage);
     bool linked = settings().bt && dataBtActive();
+    const char* st = linked ? "link" : (settings().bt ? "disc" : "off");
 
     spr.setTextColor(linked ? GREEN : (settings().bt ? HOT : p.textDim), p.bg);
     spr.setTextSize(2);
     spr.setCursor(4, y);
-    spr.print(linked ? "linked" : (settings().bt ? "discover" : "off"));
+    spr.print(st);
     spr.setTextSize(1);
-    y += 20;
+    y += 18;
 
-    spr.setTextColor(p.textDim, p.bg);
     spr.setTextColor(p.text, p.bg);
-    ln("  %s", btName);
+    ln("%.12s", btName);
     spr.setTextColor(p.textDim, p.bg);
     uint8_t mac[6] = {0};
     esp_read_mac(mac, ESP_MAC_BT);
-    ln("  %02X:%02X:%02X:%02X:%02X:%02X",
+    ln("%02X%02X%02X%02X%02X%02X",
        mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-    y += 8;
 
     if (linked) {
       uint32_t age = (millis() - tama.lastUpdated) / 1000;
-      ln("  last msg  %lus", (unsigned long)age);
+      ln("last %lus", (unsigned long)age);
     } else if (settings().bt) {
-      spr.setTextColor(p.text, p.bg);
-      ln("TO PAIR");
-      spr.setTextColor(p.textDim, p.bg);
-      ln(" Open Claude desktop");
-      ln(" > Developer");
-      ln(" > Hardware Buddy");
       y += 4;
-      ln(" auto-connects via BLE");
+      spr.setTextColor(p.text, p.bg);
     }
+
+  } else if (infoPage == 7) {
+    _infoHeader(p, y, "CREDITS", infoPage);
+    spr.setTextColor(p.text, p.bg);
+    ln("Ported to");
+    ln("M5StickC by");
+    spr.setTextColor(p.text, p.bg);
+    ln("Mia Ojeda");
+    y += 4;
+    spr.setTextColor(p.textDim, p.bg);
+    ln("ojeda-e/");
+    ln("claude-");
+    ln("desktop-");
+    ln("buddy-classic");
 
   } else {
     _infoHeader(p, y, "CREDITS", infoPage);
     spr.setTextColor(p.textDim, p.bg);
-    ln("made by");
-    y += 4;
+    ln("based on");
     spr.setTextColor(p.text, p.bg);
-    ln("Felix Rieseberg");
-    y += 12;
+    ln("Felix");
+    ln("Rieseberg");
     spr.setTextColor(p.textDim, p.bg);
-    ln("source");
-    y += 4;
-    spr.setTextColor(p.text, p.bg);
-    ln("github.com/anthropics");
-    ln("/claude-desktop-buddy");
-    y += 12;
-    spr.setTextColor(p.textDim, p.bg);
-    ln("hardware");
-    y += 4;
-    ln("M5StickC Plus");
-    ln("ESP32 + AXP192");
+    ln("anthropics/");
+    ln("claude-");
+    ln("desktop-");
+    ln("buddy");
   }
 }
 
