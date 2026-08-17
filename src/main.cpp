@@ -418,13 +418,13 @@ static void drawClock() {
 
   if (clockOrient == 0) {
     paintedOrient = 0;
-    // Bottom half — buddy naturally lives at y=0..82, GIF peeks at top
-    // via peek mode. Clearing from 90 leaves both untouched.
+    // StickC: size-4 "12:34" is 120px wide on W=80 — first digit clips.
+    // Size 2 is 60px and centers cleanly. Clear below the pet.
     spr.fillRect(0, 90, W, H - 90, p.bg);
     spr.setTextDatum(MC_DATUM);
-    spr.setTextSize(4); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 110);
-    spr.setTextSize(2); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 134);
-    spr.setTextSize(1);                                     spr.drawString(dl, CX, 150);
+    spr.setTextSize(2); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 112);
+    spr.setTextSize(1); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 132);
+                                                        spr.drawString(dl, CX, 146);
     spr.setTextDatum(TL_DATUM);
     return;
   }
@@ -441,10 +441,10 @@ static void drawClock() {
   // for nothing. Gate on the second changing (or full repaint).
   if (repaint || _clkTm.Seconds != lastSec) {
     lastSec = _clkTm.Seconds;
+    // StickC landscape is 160 wide — keep clock in the right half (~x=118)
+    // with short date so "Mon Aug 16" still fits.
     char wdl[12]; snprintf(wdl, sizeof(wdl), "%s %s %02u", DOW[clockDow()], MON[mi], _clkDt.Date);
     char ssl[3]; snprintf(ssl, sizeof(ssl), "%02u", _clkTm.Seconds);
-    // Clock on the right half (x≈118); pet occupies the left. Time size 2
-    // ("12:34"=60px), date size 1 so "Mon Aug 16" (60px) fits the ~82px zone.
     M5.Lcd.setTextDatum(MC_DATUM);
     M5.Lcd.setTextSize(2); M5.Lcd.setTextColor(p.text, p.bg);    M5.Lcd.drawString(hm, 118, 22);
     M5.Lcd.setTextSize(1); M5.Lcd.setTextColor(p.textDim, p.bg); M5.Lcd.drawString(ssl, 118, 42);
@@ -780,41 +780,46 @@ static void tinyHeart(int x, int y, bool filled, uint16_t col) {
 }
 
 // Pet page 0: meters + level (fits the StickC's short panel under the ASCII art).
+// Mood is 4 hearts; energy is 5 bars; fed is 10 dots. Plus spacing was for
+// W=135 — on W=80 it clipped to ~2 of each.
 static void drawPetMeters(const Palette& p) {
   const int TOP = 70;
   spr.fillRect(0, TOP, W, H - TOP, p.bg);
   spr.setTextSize(1);
-  int y = TOP + 16;
+  int y = TOP + 14;  // room for the PET header drawn by drawPet()
 
   spr.setTextColor(p.textDim, p.bg);
-  spr.setCursor(6, y - 2); spr.print("mood");
+  spr.setCursor(4, y); spr.print("mood");
+  y += 9;
   uint8_t mood = statsMoodTier();
   uint16_t moodCol = (mood >= 3) ? RED : (mood >= 2) ? HOT : p.textDim;
-  for (int i = 0; i < 4; i++) tinyHeart(54 + i * 16, y + 2, i < mood, moodCol);
+  for (int i = 0; i < 4; i++) tinyHeart(10 + i * 18, y, i < mood, moodCol);
 
-  y += 20;
-  spr.setCursor(6, y - 2); spr.print("fed");
+  y += 12;
+  spr.setCursor(4, y); spr.print("fed");
+  y += 9;
   uint8_t fed = statsFedProgress();
   for (int i = 0; i < 10; i++) {
-    int px = 38 + i * 9;
-    if (i < fed) spr.fillCircle(px, y + 1, 2, p.body);
-    else spr.drawCircle(px, y + 1, 2, p.textDim);
+    int px = 8 + i * 7;
+    if (i < fed) spr.fillCircle(px, y, 2, p.body);
+    else spr.drawCircle(px, y, 2, p.textDim);
   }
 
-  y += 20;
-  spr.setCursor(6, y - 2); spr.print("energy");
+  y += 10;
+  spr.setCursor(4, y); spr.print("energy");
+  y += 9;
   uint8_t en = statsEnergyTier();
   uint16_t enCol = (en >= 4) ? 0x07FF : (en >= 2) ? 0xFFE0 : HOT;
   for (int i = 0; i < 5; i++) {
-    int px = 54 + i * 13;
-    if (i < en) spr.fillRect(px, y - 2, 9, 6, enCol);
-    else spr.drawRect(px, y - 2, 9, 6, p.textDim);
+    int px = 8 + i * 14;
+    if (i < en) spr.fillRect(px, y - 2, 11, 6, enCol);
+    else spr.drawRect(px, y - 2, 11, 6, p.textDim);
   }
 
-  y += 24;
-  spr.fillRoundRect(6, y - 2, 42, 14, 3, p.body);
+  y += 12;
+  spr.fillRoundRect(4, y - 2, 42, 14, 3, p.body);
   spr.setTextColor(p.bg, p.body);
-  spr.setCursor(11, y + 1); spr.printf("Lv %u", stats().level);
+  spr.setCursor(9, y + 1); spr.printf("Lv %u", stats().level);
 }
 
 // Pet page 1: numeric counters that used to sit below Lv on the Plus.
@@ -869,15 +874,12 @@ void drawPet() {
   else if (petPage == 1) drawPetNumbers(p);
   else drawPetHowTo(p);
 
-  // Header on top of whichever page drew — title left, counter right
+  // StickC: "Mia's Buddy" overflows into the page counter — show owner only.
   spr.setTextSize(1);
   spr.setTextColor(p.text, p.bg);
   spr.setCursor(4, y + 2);
-  if (ownerName()[0]) {
-    spr.printf("%s's %s", ownerName(), petName());
-  } else {
-    spr.print(petName());
-  }
+  if (ownerName()[0]) spr.print(ownerName());
+  else                spr.print(petName());
   spr.setTextColor(p.textDim, p.bg);
   spr.setCursor(W - 28, y + 2);
   spr.printf("%u/%u", petPage + 1, PET_PAGES);
