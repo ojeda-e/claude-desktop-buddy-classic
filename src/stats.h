@@ -7,14 +7,15 @@
 
 // Persistent stats backed by NVS. Load once at boot; save sparingly
 // (NVS sectors have ~100K write cycles). We save on significant events
-// only — approval, denial, nap end — never on a timer.
+// only — approval, denial, prompt arrival, nap end — never on a timer.
 
 static const uint32_t TOKENS_PER_LEVEL = 50000;
 
 struct Stats {
-  uint32_t napSeconds;       // cumulative face-down time
+  uint32_t napSeconds;       // cumulative face-down time (energy refill; not shown)
   uint16_t approvals;
   uint16_t denials;
+  uint16_t prompts;          // permission prompts received from Claude
   uint16_t velocity[8];      // ring buffer: seconds-to-respond per approval
   uint8_t  velIdx;
   uint8_t  velCount;
@@ -31,6 +32,7 @@ inline void statsLoad() {
   _stats.napSeconds = _prefs.getUInt("nap", 0);
   _stats.approvals  = _prefs.getUShort("appr", 0);
   _stats.denials    = _prefs.getUShort("deny", 0);
+  _stats.prompts    = _prefs.getUShort("prmp", 0);
   _stats.velIdx     = _prefs.getUChar("vidx", 0);
   _stats.velCount   = _prefs.getUChar("vcnt", 0);
   _stats.level      = _prefs.getUChar("lvl", 0);
@@ -51,6 +53,7 @@ inline void statsSave() {
   _prefs.putUInt("nap", _stats.napSeconds);
   _prefs.putUShort("appr", _stats.approvals);
   _prefs.putUShort("deny", _stats.denials);
+  _prefs.putUShort("prmp", _stats.prompts);
   _prefs.putUChar("vidx", _stats.velIdx);
   _prefs.putUChar("vcnt", _stats.velCount);
   _prefs.putUChar("lvl", _stats.level);
@@ -115,6 +118,8 @@ inline bool statsPollLevelUp() {
 }
 
 inline void statsOnDenial() { _stats.denials++; _dirty = true; statsSave(); }
+
+inline void statsOnPrompt() { _stats.prompts++; _dirty = true; statsSave(); }
 
 inline void statsMarkDirty() { _dirty = true; }
 

@@ -50,7 +50,7 @@ enum DisplayMode { DISP_NORMAL, DISP_PET, DISP_INFO, DISP_COUNT };
 uint8_t displayMode = DISP_NORMAL;
 uint8_t infoPage = 0;
 uint8_t petPage = 0;
-const uint8_t PET_PAGES = 2;
+const uint8_t PET_PAGES = 3;
 uint8_t msgScroll = 0;
 uint16_t lastLineGen = 0;
 char     lastPromptId[40] = "";
@@ -422,15 +422,15 @@ static void drawClock() {
     // via peek mode. Clearing from 90 leaves both untouched.
     spr.fillRect(0, 90, W, H - 90, p.bg);
     spr.setTextDatum(MC_DATUM);
-    spr.setTextSize(4); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 140);
-    spr.setTextSize(2); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 175);
-    spr.setTextSize(1);                                     spr.drawString(dl, CX, 200);
+    spr.setTextSize(4); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 110);
+    spr.setTextSize(2); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 134);
+    spr.setTextSize(1);                                     spr.drawString(dl, CX, 150);
     spr.setTextDatum(TL_DATUM);
     return;
   }
 
-  // Landscape: 240×135 direct-to-LCD. Full fill only on entry; after that
-  // text glyph bg cells repaint themselves and the pet box (small, ~90×50)
+  // Landscape: 160×80 direct-to-LCD. Full fill only on entry; after that
+  // text glyph bg cells repaint themselves and the pet box (small, ~72×70)
   // gets a fillRect each pet tick — small enough not to tear.
   M5.Lcd.setRotation(clockOrient);
   static uint8_t lastSec = 0xFF;
@@ -443,10 +443,12 @@ static void drawClock() {
     lastSec = _clkTm.Seconds;
     char wdl[12]; snprintf(wdl, sizeof(wdl), "%s %s %02u", DOW[clockDow()], MON[mi], _clkDt.Date);
     char ssl[3]; snprintf(ssl, sizeof(ssl), "%02u", _clkTm.Seconds);
+    // Clock on the right half (x≈118); pet occupies the left. Time size 2
+    // ("12:34"=60px), date size 1 so "Mon Aug 16" (60px) fits the ~82px zone.
     M5.Lcd.setTextDatum(MC_DATUM);
-    M5.Lcd.setTextSize(3); M5.Lcd.setTextColor(p.text, p.bg);    M5.Lcd.drawString(hm, 170, 42);
-    M5.Lcd.setTextSize(2); M5.Lcd.setTextColor(p.textDim, p.bg); M5.Lcd.drawString(ssl, 170, 72);
-                                                                  M5.Lcd.drawString(wdl, 170, 102);
+    M5.Lcd.setTextSize(2); M5.Lcd.setTextColor(p.text, p.bg);    M5.Lcd.drawString(hm, 118, 22);
+    M5.Lcd.setTextSize(1); M5.Lcd.setTextColor(p.textDim, p.bg); M5.Lcd.drawString(ssl, 118, 42);
+                                                                  M5.Lcd.drawString(wdl, 118, 58);
     M5.Lcd.setTextDatum(TL_DATUM);
     M5.Lcd.setTextSize(1);
   }
@@ -459,10 +461,9 @@ static void drawClock() {
     lastPetTick = millis();
     if (buddyMode) {
       // ASCII glyphs don't self-clear; wipe the box each tick. Species
-      // hardcode BUDDY_X_CENTER=67 / BUDDY_Y_OVERLAY=6 for particles so
-      // keep portrait coords and just swap the surface — pet lands
-      // upper-left of landscape, which is where we want it anyway.
-      M5.Lcd.fillRect(0, 0, 115, 90, p.bg);
+      // draw particles relative to BUDDY_X_CENTER (=40), so the pet lands
+      // on the left of landscape, clear of the clock on the right.
+      M5.Lcd.fillRect(0, 0, 82, 80, p.bg);
       buddyRenderTo(&M5.Lcd, activeState);
     } else {
       // Full-frame GIFs paint every pixel (transparent → pal.bg), so a
@@ -470,7 +471,7 @@ static void drawClock() {
       // last scanline. The entry fillScreen on paintedOrient change
       // already covers the surround.
       characterSetState(activeState);
-      characterRenderTo(&M5.Lcd, 57, 45);
+      characterRenderTo(&M5.Lcd, 40, 40);
     }
   }
   M5.Lcd.setRotation(0);
@@ -780,7 +781,8 @@ static void tinyHeart(int x, int y, bool filled, uint16_t col) {
   }
 }
 
-static void drawPetStats(const Palette& p) {
+// Pet page 0: meters + level (fits the StickC's short panel under the ASCII art).
+static void drawPetMeters(const Palette& p) {
   const int TOP = 70;
   spr.fillRect(0, TOP, W, H - TOP, p.bg);
   spr.setTextSize(1);
@@ -815,24 +817,30 @@ static void drawPetStats(const Palette& p) {
   spr.fillRoundRect(6, y - 2, 42, 14, 3, p.body);
   spr.setTextColor(p.bg, p.body);
   spr.setCursor(11, y + 1); spr.printf("Lv %u", stats().level);
+}
 
-  y += 20;
+// Pet page 1: numeric counters that used to sit below Lv on the Plus.
+static void drawPetNumbers(const Palette& p) {
+  const int TOP = 70;
+  spr.fillRect(0, TOP, W, H - TOP, p.bg);
+  spr.setTextSize(1);
+  int y = TOP + 16;  // room for the PET header drawn by drawPet()
+
   spr.setTextColor(p.textDim, p.bg);
   spr.setCursor(6, y);
   spr.printf("approved %u", stats().approvals);
-  spr.setCursor(6, y + 10);
+  spr.setCursor(6, y + 12);
   spr.printf("denied   %u", stats().denials);
-  uint32_t nap = stats().napSeconds;
-  spr.setCursor(6, y + 20);
-  spr.printf("napped   %luh%02lum", nap/3600, (nap/60)%60);
+  spr.setCursor(6, y + 24);
+  spr.printf("prompts  %u", stats().prompts);
   auto tokFmt = [&](const char* label, uint32_t v, int yPx) {
     spr.setCursor(6, yPx);
     if (v >= 1000000)   spr.printf("%s%lu.%luM", label, v/1000000, (v/100000)%10);
     else if (v >= 1000) spr.printf("%s%lu.%luK", label, v/1000, (v/100)%10);
     else                spr.printf("%s%lu", label, v);
   };
-  tokFmt("tokens   ", stats().tokens, y + 30);
-  tokFmt("today    ", tama.tokensToday, y + 40);
+  tokFmt("tokens   ", stats().tokens, y + 36);
+  tokFmt("today    ", tama.tokensToday, y + 48);
 }
 
 static void drawPetHowTo(const Palette& p) {
@@ -870,7 +878,8 @@ void drawPet() {
   const Palette& p = characterPalette();
   int y = 70;
 
-  if (petPage == 0) drawPetStats(p);
+  if (petPage == 0) drawPetMeters(p);
+  else if (petPage == 1) drawPetNumbers(p);
   else drawPetHowTo(p);
 
   // Header on top of whichever page drew — title left, counter right
@@ -1026,6 +1035,7 @@ void loop() {
     responseSent = false;
     if (tama.promptId[0]) {
       promptArrivedMs = millis();
+      statsOnPrompt();
       wake();
       beep(1200, 80);   // alert chirp
       // Jump to the approval screen no matter what was open — drawApproval
