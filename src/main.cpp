@@ -521,12 +521,15 @@ void drawPasskey() {
   spr.fillSprite(p.bg);
   spr.setTextSize(1);
   spr.setTextColor(p.textDim, p.bg);
-  spr.setCursor(8, 56);  spr.print("BLUETOOTH PAIRING");
-  spr.setCursor(8, 184); spr.print("enter on desktop:");
-  spr.setTextSize(3);
+  spr.setCursor(4, 36);  spr.print("BLUETOOTH");
+  spr.setCursor(4, 46);  spr.print("PAIRING");
+  spr.setCursor(4, 120); spr.print("enter on");
+  spr.setCursor(4, 130); spr.print("desktop:");
+  spr.setTextSize(2);
   spr.setTextColor(p.text, p.bg);
   char b[8]; snprintf(b, sizeof(b), "%06lu", (unsigned long)blePasskey());
-  spr.setCursor((W - 18 * 6) / 2, 110);
+  const int DIG_W = 12;  // default font width × text size 2
+  spr.setCursor((W - DIG_W * 6) / 2, 72);
   spr.print(b);
 }
 
