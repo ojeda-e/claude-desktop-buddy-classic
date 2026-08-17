@@ -1,4 +1,4 @@
-#include <M5StickCPlus.h>
+#include <M5StickC.h>
 #include <LittleFS.h>
 #include <stdarg.h>
 #include "ble_bridge.h"
@@ -20,7 +20,7 @@ static void startBt() {
 
 #include "character.h"
 #include "stats.h"
-const int W = 135, H = 240;
+const int W = 80, H = 160;
 const int CX = W / 2;
 const int CY_BASE = 120;
 const int LED_PIN = 10;          // red LED, active-low
@@ -109,7 +109,7 @@ static void wake() {
 bool     responseSent = false;
 
 static void beep(uint16_t freq, uint16_t dur) {
-  if (settings().sound) M5.Beep.tone(freq, dur);
+  (void)freq; (void)dur;  // no buzzer on M5StickC
 }
 
 static void sendCmd(const char* json) {
@@ -358,7 +358,7 @@ static void clockRefreshRtc() {
   _clkLastRead = millis();
   _onUsb = M5.Axp.GetVBusVoltage() > 4.0f;
   M5.Rtc.GetTime(&_clkTm);
-  M5.Rtc.GetDate(&_clkDt);
+  M5.Rtc.GetData(&_clkDt);
 }
 
 static void clockUpdateOrient() {
@@ -939,7 +939,7 @@ void setup() {
   M5.begin();
   M5.Lcd.setRotation(0);
   M5.Imu.Init();
-  M5.Beep.begin();
+  /* no buzzer on M5StickC */
   startBt();
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);   // off
@@ -987,7 +987,7 @@ void setup() {
 
 void loop() {
   M5.update();
-  M5.Beep.update();
+  /* no buzzer on M5StickC */
   t++;
   uint32_t now = millis();
 

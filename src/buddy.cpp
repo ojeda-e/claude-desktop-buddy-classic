@@ -1,6 +1,6 @@
 #include "buddy.h"
 #include "buddy_common.h"
-#include <M5StickCPlus.h>
+#include <M5StickC.h>
 #include <string.h>
 
 extern TFT_eSprite spr;
@@ -10,7 +10,7 @@ enum { B_SLEEP, B_IDLE, B_BUSY, B_ATTENTION, B_CELEBRATE, B_DIZZY, B_HEART };
 
 // ──────────────── shared geometry ────────────────
 const int BUDDY_X_CENTER = 67;
-const int BUDDY_CANVAS_W = 135;
+const int BUDDY_CANVAS_W = 80;
 const int BUDDY_Y_BASE   = 30;
 const int BUDDY_Y_OVERLAY = 6;
 const int BUDDY_CHAR_W   = 6;
