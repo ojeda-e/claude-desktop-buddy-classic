@@ -41,10 +41,12 @@ static uint8_t _scale = 1;
 
 void buddyPrintLine(const char* line, int yPx, uint16_t color, int xOff) {
   int len = strlen(line);
-  if (_scale > 1) {
-    while (len && line[len-1] == ' ') len--;
-    while (len && *line == ' ')       { line++; len--; }
-  }
+  // Trim padding so each row re-centers on its content, not its padded cell.
+  // Rows have unequal lead/trail spaces (e.g. the robot head vs its mouth);
+  // without this, asymmetric rows sit off-center. Formerly 2x-only, but the
+  // 80px panel renders the main view at 1x, so it must apply at every scale.
+  while (len && line[len-1] == ' ') len--;
+  while (len && *line == ' ')       { line++; len--; }
   int w = len * BUDDY_CHAR_W * _scale;
   int x = BUDDY_X_CENTER - w / 2 + xOff * _scale;
   _tgt->setTextColor(color, BUDDY_BG);
