@@ -1,7 +1,7 @@
 # Claude Desktop Buddy for M5StickC
 
-[![GitHub Actions Status](https://github.com/ojeda-e/claude-desktop-buddy-M5StickC/workflows/CI/badge.svg)](https://github.com/ojeda-e/claude-desktop-buddy-M5StickC/actions?query=workflow%3ACI)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ojeda-e/claude-desktop-buddy-M5StickC/blob/main/LICENSE)
+[![GitHub Actions Status](https://github.com/ojeda-e/claude-desktop-buddy-classic/workflows/CI/badge.svg)](https://github.com/ojeda-e/claude-desktop-buddy-classic/actions?query=workflow%3ACI)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ojeda-e/claude-desktop-buddy-classic/blob/main/LICENSE)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-espressif32-orange.svg)](https://platformio.org/)
 [![Board](https://img.shields.io/badge/board-M5StickC-blue.svg)](https://docs.m5stack.com/en/core/m5stickc)
 
@@ -24,7 +24,7 @@ The upstream firmware targets the M5StickC Plus. The two boards share most of th
 With this firmware you can:
 
 - Run the Claude Hardware Buddy on an original **M5StickC**
-- Pick from **18 ASCII pets**, scaled for the 80 × 160 screen
+- Pick from **19 ASCII pets**, scaled for the 80 × 160 screen
 - Approve or deny Claude tool prompts from the stick
 - Track mood, fed, energy, level, prompts, and tokens on compact multi-page screens
 - Pair over Bluetooth with Claude Desktop / Cowork
@@ -53,8 +53,8 @@ Or follow the [PlatformIO install docs](https://docs.platformio.org/en/latest/co
 ### 2. Clone this repository
 
 ```bash
-git clone https://github.com/ojeda-e/claude-desktop-buddy-M5StickC.git
-cd claude-desktop-buddy-M5StickC
+git clone https://github.com/ojeda-e/claude-desktop-buddy-classic.git
+cd claude-desktop-buddy-classic
 ```
 
 The M5StickC port is already applied in this fork. No extra patching step.
@@ -123,7 +123,7 @@ On boot the pet appears **asleep**. That is expected until Claude is connected.
 | 3 | goose |
 | 4 | blob |
 | 5 | cat |
-| 6 | dragon |
+| 6 | puppy |
 | 7 | octopus |
 | 8 | owl |
 | 9 | penguin |
@@ -136,6 +136,7 @@ On boot the pet appears **asleep**. That is expected until Claude is connected.
 | 16 | rabbit |
 | 17 | mushroom |
 | 18 | chonk |
+| 19 | dragon |
 
 ### Pair with Claude
 
