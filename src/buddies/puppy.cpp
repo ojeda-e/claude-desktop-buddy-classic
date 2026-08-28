@@ -12,16 +12,16 @@ namespace puppy {
 // (/ . . \)     dot eyes
 //  \ (*) /      tongue
 
-// ─── SLEEP ───  ~12s cycle, 6 poses + Z drift
+// ─── SLEEP ───  ~12s cycle, 6 poses + drifting z overlay
 static void doSleep(uint32_t t) {
-  static const char* const CURL[5]    = { "            ", " /)---(\\  ", "(/ - - \\) ", " \\ (~) /  ", "            " };
+  static const char* const SNOOZE[5]  = { "            ", " /)---(\\  ", "(/ - - \\) ", " \\ (~) /  ", "            " };
   static const char* const BREATHE[5] = { "            ", " /)---(\\  ", "(/ -_- \\) ", " \\ (~) /  ", "            " };
-  static const char* const EAR_F[5]   = { "            ", " v)---(\\  ", "(/ - - \\) ", " \\ (~) /  ", "            " };
-  static const char* const SIDE[5]    = { "            ", "  .-~~~-.  ", " ( --zZ )  ", "  `~~~~`    ", "            " };
-  static const char* const TWITCH[5]  = { "            ", " /)---(\\  ", "(/ - - \\) ", " \\ (~) /~~ ", "            " };
+  static const char* const EAR_DN[5]  = { "            ", " v)---(\\  ", "(/ - - \\) ", " \\ (~) /  ", "            " };
+  static const char* const ZFACE[5]   = { "            ", " /)---(\\  ", "(/ -_- \\) ", " \\ (~) /  ", "            " };
+  static const char* const TWITCH[5]  = { "            ", " /)---(\\  ", "(/ - - \\) ", " \\ (~) /~~", "            " };
   static const char* const DREAM[5]   = { "            ", " /)---(\\  ", "(/ u.u \\) ", " \\ (~) /  ", "            " };
 
-  const char* const* P[6] = { CURL, BREATHE, EAR_F, SIDE, TWITCH, DREAM };
+  const char* const* P[6] = { SNOOZE, BREATHE, EAR_DN, ZFACE, TWITCH, DREAM };
   static const uint8_t SEQ[] = {
     0,1,0,1,0,1,4,1,
     0,1,0,1,
@@ -32,17 +32,26 @@ static void doSleep(uint32_t t) {
   uint8_t beat = (t / 5) % sizeof(SEQ);
   buddyPrintSprite(P[SEQ[beat]], 5, 0, 0xFE60);
 
+  // Z particles drift up-right (5 staggered streams)
   int p1 = (t)     % 12;
-  int p2 = (t + 5) % 12;
-  int p3 = (t + 9) % 12;
+  int p2 = (t + 3) % 12;
+  int p3 = (t + 6) % 12;
+  int p4 = (t + 9) % 12;
+  int p5 = (t + 2) % 12;
   buddySetColor(BUDDY_DIM);
-  buddySetCursor(BUDDY_X_CENTER + 18 + p1, BUDDY_Y_OVERLAY + 18 - p1 * 2);
+  buddySetCursor(BUDDY_X_CENTER + 14 + p1, BUDDY_Y_OVERLAY + 20 - p1 * 2);
   buddyPrint("z");
   buddySetColor(BUDDY_WHITE);
-  buddySetCursor(BUDDY_X_CENTER + 24 + p2, BUDDY_Y_OVERLAY + 14 - p2);
+  buddySetCursor(BUDDY_X_CENTER + 22 + p2, BUDDY_Y_OVERLAY + 16 - p2);
   buddyPrint("Z");
   buddySetColor(BUDDY_DIM);
-  buddySetCursor(BUDDY_X_CENTER + 14 + p3 / 2, BUDDY_Y_OVERLAY + 8 - p3 / 2);
+  buddySetCursor(BUDDY_X_CENTER + 30 + p3 / 2, BUDDY_Y_OVERLAY + 12 - p3 / 2);
+  buddyPrint("z");
+  buddySetColor(BUDDY_WHITE);
+  buddySetCursor(BUDDY_X_CENTER + 10 + p4, BUDDY_Y_OVERLAY + 18 - p4);
+  buddyPrint("Z");
+  buddySetColor(BUDDY_DIM);
+  buddySetCursor(BUDDY_X_CENTER + 26 + p5 / 3, BUDDY_Y_OVERLAY + 8 - p5 / 3);
   buddyPrint("z");
 }
 
