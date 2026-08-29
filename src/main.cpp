@@ -418,10 +418,11 @@ static void drawClock() {
 
   if (clockOrient == 0) {
     paintedOrient = 0;
-    // StickC: size-4 "12:34" is 120px wide on W=80 — first digit clips.
-    // Size 2 is 60px and centers cleanly. Clear below the pet.
-    spr.fillRect(0, 90, W, H - 90, p.bg);
+    // StickC: size-4 time would clip on W=80, use size 2 below.
+    static const int CLOCK_TOP = 82;
+    spr.fillRect(0, CLOCK_TOP, W, H - CLOCK_TOP, p.bg);
     spr.setTextDatum(MC_DATUM);
+    spr.setTextSize(2); spr.setTextColor(p.body, p.bg);    spr.drawString(petName(), CX, CLOCK_TOP + 8);
     spr.setTextSize(2); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 112);
     spr.setTextSize(1); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 132);
                                                         spr.drawString(dl, CX, 146);
