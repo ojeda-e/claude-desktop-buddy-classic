@@ -53,6 +53,7 @@ uint8_t infoPage = 0;
 uint8_t petPage = 0;
 const uint8_t PET_PAGES = 3;
 uint8_t msgScroll = 0;
+uint8_t hudMaxBack = 0;    // oldest reachable scroll pos; set by drawHUD
 uint16_t lastLineGen = 0;
 char     lastPromptId[40] = "";
 uint32_t lastInteractMs = 0;
@@ -969,6 +970,7 @@ void drawHUD() {
   }
 
   uint8_t maxBack = (nDisp > SHOW) ? (nDisp - SHOW) : 0;
+  hudMaxBack = maxBack;
   if (msgScroll > maxBack) msgScroll = maxBack;
 
   int end = (int)nDisp - msgScroll;
@@ -1188,7 +1190,7 @@ void loop() {
       applyDisplayMode();
     } else {
       beep(2400, 30);
-      msgScroll = (msgScroll >= 30) ? 0 : msgScroll + 1;
+      msgScroll = (msgScroll >= hudMaxBack) ? 0 : msgScroll + 1;
     }
   }
 
