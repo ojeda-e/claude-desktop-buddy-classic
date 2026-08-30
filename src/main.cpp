@@ -141,7 +141,11 @@ const uint8_t MENU_N = 6;
 
 bool    settingsOpen = false;
 uint8_t settingsSel  = 0;
-const char* settingsItems[] = { "brightness", "sound", "bluetooth", "wifi", "led", "transcript", "clock rot", "ascii pet", "reset", "back" };
+// HUD is the transcript display
+static const char* settingsLabels[] = {
+  "Brightness", "Sound", "Bluetooth", "WiFi", "LED",
+  "HUD", "Clock Rot", "ASCII Pet", "Reset", "Back"
+};
 const uint8_t SETTINGS_N = 10;
 
 bool    resetOpen = false;
@@ -250,36 +254,61 @@ static void drawMenuHints(const Palette& p, int mx, int mw, int hy,
   spr.fillTriangle(x, hy, x, hy + 6, x + 5, hy + 3, p.textDim);
 }
 
+static void drawSettingValue(const Palette& p, Settings& s, int idx, int x, int y, const bool* toggles) {
+  spr.setTextColor(p.textDim, PANEL);
+  spr.setCursor(x, y);
+  if (idx == 0) {
+    spr.setTextColor(HOT, PANEL);
+    spr.printf("%u/4", brightLevel);
+  } else if (idx >= 1 && idx <= 5) {
+    spr.setTextColor(toggles[idx - 1] ? GREEN : p.textDim, PANEL);
+    spr.print(toggles[idx - 1] ? "on" : "off");
+  } else if (idx == 6) {
+    static const char* const RN[] = { "auto", "port", "land" };
+    spr.setTextColor(HOT, PANEL);
+    spr.print(RN[s.clockRot]);
+  } else if (idx == 7) {
+    uint8_t total = buddySpeciesCount() + (gifAvailable ? 1 : 0);
+    uint8_t pos   = buddyMode ? buddySpeciesIdx() + 1 : total;
+    spr.setTextColor(HOT, PANEL);
+    spr.printf("%u/%u", pos, total);
+  }
+}
+
+static int settingsPanelHeight() {
+  int h = 8;
+  for (int i = 0; i < (int)SETTINGS_N; i++) {
+    h += 9;
+    if (i == (int)settingsSel && i <= 7) h += 9;
+    h += 2;
+  }
+  return h + MENU_HINT_H;
+}
+
 static void drawSettings() {
   const Palette& p = characterPalette();
-  int mw = 118, mh = 16 + SETTINGS_N * 14 + MENU_HINT_H;
-  int mx = (W - mw) / 2, my = (H - mh) / 2;
+  int mw = W - 4, mh = settingsPanelHeight();
+  int mx = 2, my = (H - mh) / 2;
+  if (my < 0) my = 0;
   spr.fillRoundRect(mx, my, mw, mh, 4, PANEL);
   spr.drawRoundRect(mx, my, mw, mh, 4, p.textDim);
   spr.setTextSize(1);
   Settings& s = settings();
   bool vals[] = { s.sound, s.bt, s.wifi, s.led, s.hud };
-  for (int i = 0; i < SETTINGS_N; i++) {
-    bool sel = (i == settingsSel);
+
+  int y = my + 6;
+  for (int i = 0; i < (int)SETTINGS_N; i++) {
+    bool sel = (i == (int)settingsSel);
     spr.setTextColor(sel ? p.text : p.textDim, PANEL);
-    spr.setCursor(mx + 6, my + 8 + i * 14);
+    spr.setCursor(mx + 4, y);
     spr.print(sel ? "> " : "  ");
-    spr.print(settingsItems[i]);
-    spr.setCursor(mx + mw - 36, my + 8 + i * 14);
-    spr.setTextColor(p.textDim, PANEL);
-    if (i == 0) {
-      spr.printf("%u/4", brightLevel);
-    } else if (i >= 1 && i <= 5) {
-      spr.setTextColor(vals[i-1] ? GREEN : p.textDim, PANEL);
-      spr.print(vals[i-1] ? " on" : "off");
-    } else if (i == 6) {
-      static const char* const RN[] = { "auto", "port", "land" };
-      spr.print(RN[s.clockRot]);
-    } else if (i == 7) {
-      uint8_t total = buddySpeciesCount() + (gifAvailable ? 1 : 0);
-      uint8_t pos   = buddyMode ? buddySpeciesIdx() + 1 : total;
-      spr.printf("%u/%u", pos, total);
+    spr.print(settingsLabels[i]);
+    y += 9;
+    if (sel && i <= 7) {
+      drawSettingValue(p, s, i, mx + 10, y, vals);
+      y += 9;
     }
+    y += 2;
   }
   drawMenuHints(p, mx, mw, my + mh - 12, "Next", "Change");
 }
