@@ -24,12 +24,14 @@ struct TamaState {
 // ---------------------------------------------------------------------------
 // Three modes, checked in priority order:
 //   demo   → auto-cycle fake scenarios every 8s, ignore live data
-//   live   → JSON arrived in the last 10s over USB or BT
-//   asleep → no data, all zeros, "No Claude connected"
+//   live   → heartbeat snapshot arrived in the last 30s
+//   asleep → no snapshot, all derived state cleared, "No Claude connected"
 // ---------------------------------------------------------------------------
 
-static uint32_t _lastLiveMs = 0;
+static uint32_t _lastSnapshotMs = 0;
 static uint32_t _lastBtByteMs = 0;   // hasClient() lies; track actual BT traffic
+static bool     _feedFromBt   = false;  // transport of the line being parsed
+static bool     _snapshotOverBt = false;
 static bool     _demoMode   = false;
 static uint8_t  _demoIdx    = 0;
 static uint32_t _demoNext   = 0;
@@ -47,13 +49,16 @@ inline void dataSetDemo(bool on) {
 }
 inline bool dataDemo() { return _demoMode; }
 
-inline bool dataConnected() {
-  return _lastLiveMs != 0 && (millis() - _lastLiveMs) <= 30000;
-}
-
 inline bool dataBtActive() {
   // Desktop's idle keepalive is ~10s; give it 1.5x headroom.
   return _lastBtByteMs != 0 && (millis() - _lastBtByteMs) <= 15000;
+}
+
+// Liveness is snapshot-driven only. Byte-level activity is not a proxy for
+// it: off USB power the CP2104 is unpowered and U0RXD floats, so Serial
+// reports traffic that never was.
+inline bool dataConnected() {
+  return _lastSnapshotMs != 0 && (millis() - _lastSnapshotMs) <= 30000;
 }
 
 inline const char* dataScenarioName() {
@@ -70,7 +75,7 @@ inline bool dataRtcValid() { return _rtcValid; }
 static void _applyJson(const char* line, TamaState* out) {
   JsonDocument doc;
   if (deserializeJson(doc, line)) return;
-  if (xferCommand(doc)) { _lastLiveMs = millis(); return; }
+  if (xferCommand(doc)) return;
 
   // Bridge sends {"time":[epoch_sec, tz_offset_sec]}; gmtime_r on the
   // adjusted epoch yields local components including weekday.
@@ -86,33 +91,46 @@ static void _applyJson(const char* line, TamaState* out) {
     extern uint32_t _clkLastRead;
     _clkLastRead = 0;   // force re-read so _clkDt and _rtcValid agree
     _rtcValid = true;
-    _lastLiveMs = millis();
     return;
   }
 
-  out->sessionsTotal     = doc["total"]     | out->sessionsTotal;
-  out->sessionsRunning   = doc["running"]   | out->sessionsRunning;
-  out->sessionsWaiting   = doc["waiting"]   | out->sessionsWaiting;
+  if (doc["total"].isNull()) return;
+
+  out->sessionsTotal     = (uint8_t)(doc["total"]   | 0);
+  out->sessionsRunning   = (uint8_t)(doc["running"] | 0);
+  out->sessionsWaiting   = (uint8_t)(doc["waiting"] | 0);
   out->recentlyCompleted = doc["completed"] | false;
   uint32_t bridgeTokens = doc["tokens"] | 0;
   if (doc["tokens"].is<uint32_t>()) statsOnBridgeTokens(bridgeTokens);
   out->tokensToday = doc["tokens_today"] | out->tokensToday;
+
   const char* m = doc["msg"];
-  if (m) { strncpy(out->msg, m, sizeof(out->msg)-1); out->msg[sizeof(out->msg)-1]=0; }
+  if (m && m[0]) {
+    strncpy(out->msg, m, sizeof(out->msg)-1); out->msg[sizeof(out->msg)-1]=0;
+  } else {
+    out->msg[0] = 0;
+  }
+
   JsonArray la = doc["entries"];
   if (!la.isNull()) {
     uint8_t n = 0;
+    bool changed = false;
     for (JsonVariant v : la) {
       if (n >= 8) break;
       const char* s = v.as<const char*>();
-      strncpy(out->lines[n], s ? s : "", 91); out->lines[n][91]=0;
+      if (!s) s = "";
+      if (strncmp(out->lines[n], s, 91) != 0) changed = true;
+      strncpy(out->lines[n], s, 91); out->lines[n][91]=0;
       n++;
     }
-    if (n != out->nLines || (n > 0 && strcmp(out->lines[n-1], out->msg) != 0)) {
-      out->lineGen++;
-    }
+    if (n != out->nLines) changed = true;
+    if (changed) out->lineGen++;
     out->nLines = n;
+  } else {
+    if (out->nLines > 0) out->lineGen++;
+    out->nLines = 0;
   }
+
   JsonObject pr = doc["prompt"];
   if (!pr.isNull()) {
     const char* pid = pr["id"]; const char* pt = pr["tool"]; const char* ph = pr["hint"];
@@ -122,8 +140,10 @@ static void _applyJson(const char* line, TamaState* out) {
   } else {
     out->promptId[0] = 0; out->promptTool[0] = 0; out->promptHint[0] = 0;
   }
+
   out->lastUpdated = millis();
-  _lastLiveMs = millis();
+  _lastSnapshotMs = millis();
+  _snapshotOverBt = _feedFromBt;
 }
 
 template<size_t N>
@@ -157,8 +177,10 @@ inline void dataPoll(TamaState* out) {
     return;
   }
 
+  _feedFromBt = false;
   _usbLine.feed(Serial, out);
   // BLE ring buffer is drained manually since it's not a Stream.
+  _feedFromBt = true;
   while (bleAvailable()) {
     int c = bleRead();
     if (c < 0) break;
@@ -174,11 +196,20 @@ inline void dataPoll(TamaState* out) {
     }
   }
 
+  _feedFromBt = false;
+
+  if (_snapshotOverBt && !bleConnected()) _lastSnapshotMs = 0;
+
+  static bool wasConnected = false;
   out->connected = dataConnected();
   if (!out->connected) {
+    if (wasConnected) out->lineGen++;
     out->sessionsTotal=0; out->sessionsRunning=0; out->sessionsWaiting=0;
     out->recentlyCompleted=false; out->lastUpdated=now;
+    out->nLines=0;
+    out->promptId[0]=0; out->promptTool[0]=0; out->promptHint[0]=0;
     strncpy(out->msg, "No Claude connected", sizeof(out->msg)-1);
     out->msg[sizeof(out->msg)-1]=0;
   }
+  wasConnected = out->connected;
 }
