@@ -1,6 +1,7 @@
 #include <M5StickC.h>
 #include <LittleFS.h>
 #include <stdarg.h>
+#include <strings.h>
 #include "ble_bridge.h"
 #include "data.h"
 #include "buddy.h"
@@ -479,7 +480,7 @@ static void drawClock() {
 }
 
 PersonaState derive(const TamaState& s) {
-  if (!s.connected)            return P_IDLE;
+  if (!s.connected)            return P_SLEEP;
   if (s.sessionsWaiting > 0)   return P_ATTENTION;
   if (s.recentlyCompleted)     return P_CELEBRATE;
   if (s.sessionsRunning >= 3)  return P_BUSY;
@@ -688,6 +689,47 @@ void drawInfo() {
 }
 
 
+static const uint8_t HUD_COLS = (W - 8) / 6;   // ~12 cols on StickC
+
+// Claude msgs are stripped for the tiny HUD and prefixed with ">".
+static void formatHudLine(const char* in, char* out, size_t cap) {
+  if (!in || !out || cap == 0) { out[0] = 0; return; }
+  while (*in == ' ') in++;
+  if (!*in) { out[0] = 0; return; }
+
+  if (strcasecmp(in, "(no messages)") == 0) {
+    strncpy(out, "> thinking...", cap);
+    out[cap - 1] = 0;
+    return;
+  }
+
+  if (in[0] == '(') {
+    const char* end = strrchr(in, ')');
+    if (end && end > in + 1) {
+      const char* body = in + 1;
+      size_t blen = (size_t)(end - body);
+      while (blen > 0 && body[blen - 1] == ' ') blen--;
+
+      if (blen >= 7 && strncasecmp(body, "called ", 7) == 0) {
+        body += 7;
+        blen -= 7;
+      }
+      while (blen > 0 && *body == ' ') { body++; blen--; }
+
+      if (blen + 2 < cap) {
+        out[0] = '>';
+        out[1] = ' ';
+        memcpy(out + 2, body, blen);
+        out[2 + blen] = 0;
+        return;
+      }
+    }
+  }
+
+  strncpy(out, in, cap - 1);
+  out[cap - 1] = 0;
+}
+
 // Greedy word-wrap into fixed-width rows. Continuation rows get a leading
 // space. Returns number of rows written.
 static uint8_t wrapInto(const char* in, char out[][24], uint8_t maxRows, uint8_t width) {
@@ -889,17 +931,28 @@ void drawPet() {
 void drawHUD() {
   if (tama.promptId[0]) { drawApproval(); return; }
   const Palette& p = characterPalette();
-  const int SHOW = 3, LH = 8, WIDTH = 21;
-  const int AREA = SHOW * LH + 4;
-  spr.fillRect(0, H - AREA, W, AREA, p.bg);
+  static const int LH = 8, SHOW = 6, PAD = 2, LIFT = 36;
+  static const int AREA = SHOW * LH + PAD + LIFT;
+  static const int TOP = H - AREA;
+  static const int TEXT_Y0 = H - SHOW * LH - PAD;
+  spr.fillRect(0, TOP, W, AREA, p.bg);
   spr.setTextSize(1);
 
   if (tama.lineGen != lastLineGen) { msgScroll = 0; lastLineGen = tama.lineGen; wake(); }
 
+  char formatted[92];
   if (tama.nLines == 0) {
+    if (!tama.msg[0]) return;
+    char disp[6][24];
+    formatHudLine(tama.msg, formatted, sizeof(formatted));
+    uint8_t nDisp = wrapInto(formatted, disp, SHOW, HUD_COLS);
+    if (nDisp > SHOW) nDisp = SHOW;
     spr.setTextColor(p.text, p.bg);
-    spr.setCursor(4, H - LH - 2);
-    spr.print(tama.msg);
+    uint8_t row0 = SHOW - nDisp;
+    for (uint8_t i = 0; i < nDisp; i++) {
+      spr.setCursor(4, TEXT_Y0 + (row0 + i) * LH);
+      spr.print(disp[i]);
+    }
     return;
   }
 
@@ -909,7 +962,8 @@ void drawHUD() {
   static uint8_t srcOf[32];
   uint8_t nDisp = 0;
   for (uint8_t i = 0; i < tama.nLines && nDisp < 32; i++) {
-    uint8_t got = wrapInto(tama.lines[i], &disp[nDisp], 32 - nDisp, WIDTH);
+    formatHudLine(tama.lines[i], formatted, sizeof(formatted));
+    uint8_t got = wrapInto(formatted, &disp[nDisp], 32 - nDisp, HUD_COLS);
     for (uint8_t j = 0; j < got; j++) srcOf[nDisp + j] = i;
     nDisp += got;
   }
@@ -924,12 +978,12 @@ void drawHUD() {
     uint8_t row = start + i;
     bool fresh = (srcOf[row] == newest) && (msgScroll == 0);
     spr.setTextColor(fresh ? p.text : p.textDim, p.bg);
-    spr.setCursor(4, H - AREA + 2 + i * LH);
+    spr.setCursor(4, TEXT_Y0 + i * LH);
     spr.print(disp[row]);
   }
   if (msgScroll > 0) {
     spr.setTextColor(p.body, p.bg);
-    spr.setCursor(W - 18, H - LH - 2);
+    spr.setCursor(W - 18, TEXT_Y0 + (SHOW - 1) * LH);
     spr.printf("-%u", msgScroll);
   }
 }
