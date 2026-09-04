@@ -7,14 +7,18 @@ extern TFT_eSprite spr;
 
 namespace cat {
 
-// ─── SLEEP ───  ~12s cycle, 6 poses (curled loaf, breathing, twitching tail)
+// 5-line cat: ears / body / eyes / mouth-sides / paws.
+// Whiskers use "==" (ASCII). Eyes sit on line 2, mouth on line 3.
+// No space for tail in classic.
+
+// ─── SLEEP ───  12s cycle, 6 poses
 static void doSleep(uint32_t t) {
-  static const char* const LOAF[5]     = { "            ", "            ", "   .-..-.   ", "  ( -.- )   ", "  `------`~ " };
-  static const char* const BREATHE[5]  = { "            ", "            ", "   .-..-.   ", "  ( -.- )_  ", " `~------'~ " };
-  static const char* const CURL[5]     = { "            ", "            ", "   .-/\\.    ", "  (  ..  )) ", "  `~~~~~~`  " };
-  static const char* const CURL_TW[5]  = { "            ", "            ", "   .-/\\.    ", "  (  ..  )) ", "  `~~~~~~`~ " };
-  static const char* const PURR[5]     = { "            ", "            ", "   .-..-.   ", "  ( u.u )   ", " `~------'~ " };
-  static const char* const DREAM[5]    = { "            ", "            ", "   .-..-.   ", "  ( o.o )   ", "  `------`  " };
+  static const char* const LOAF[5]     = { "  /\\___/\\   ", " /       \\  ", "== -   - == ", " \\   o   / ", "  \\_____/  " };
+  static const char* const BREATHE[5]  = { "  /\\___/\\   ", " /       \\  ", "== -   - == ", " \\       / ", "  \\_____/  " };
+  static const char* const CURL[5]     = { "  /\\___/\\   ", " /       \\  ", "== -   - == ", " \\       / ", "  \\-----/  " };
+  static const char* const CURL_TW[5]  = { "  /\\___/\\   ", " /       \\  ", "== -   - == ", " \\       / ", "  \\-----/  " };
+  static const char* const PURR[5]     = { "  /\\___/\\   ", " /       \\  ", "== u   u == ", " \\   w   / ", "  \\_____/  " };
+  static const char* const DREAM[5]    = { "  /\\___/\\   ", " /       \\  ", "== -   - == ", " \\   -   / ", "  \\_____/  " };
 
   const char* const* P[6] = { LOAF, BREATHE, LOAF, PURR, CURL, CURL_TW };
   static const uint8_t SEQ[] = {
@@ -26,9 +30,8 @@ static void doSleep(uint32_t t) {
     5,5,4,4
   };
   uint8_t beat = (t / 5) % sizeof(SEQ);
-  buddyPrintSprite(P[SEQ[beat]], 5, 0, 0xC2A6);
+  buddyPrintSprite(P[SEQ[beat]], 5, -2, 0xC2A6);
 
-  // Z particles drift up-right (3 staggered streams)
   int p1 = (t)     % 12;
   int p2 = (t + 5) % 12;
   int p3 = (t + 9) % 12;
@@ -43,18 +46,18 @@ static void doSleep(uint32_t t) {
   buddyPrint("z");
 }
 
-// ─── IDLE ───  ~16s cycle, 10 poses (sassy micro-actions)
+// ─── IDLE ───  16s cycle, 10 poses
 static void doIdle(uint32_t t) {
-  static const char* const REST[5]    = { "            ", "   /\\_/\\    ", "  ( o   o ) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const LOOK_L[5]  = { "            ", "   /\\_/\\    ", "  (o    o ) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const LOOK_R[5]  = { "            ", "   /\\_/\\    ", "  ( o    o) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const BLINK[5]   = { "            ", "   /\\_/\\    ", "  ( -   - ) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const SLOW_BL[5] = { "            ", "   /\\-/\\    ", "  ( _   _ ) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const EAR_L[5]   = { "            ", "   <\\_/\\    ", "  ( o   o ) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const EAR_R[5]   = { "            ", "   /\\_/>    ", "  ( o   o ) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const TAIL_L[5]  = { "            ", "   /\\_/\\    ", "  ( o   o ) ", "  (  w   )  ", "  (\")_(\")~  " };
-  static const char* const TAIL_R[5]  = { "            ", "   /\\_/\\    ", "  ( o   o ) ", "  (  w   )  ", " ~(\")_(\")   " };
-  static const char* const GROOM[5]   = { "            ", "   /\\_/\\    ", "  ( ^   ^ ) ", "  (  P   )  ", "  (\")_(\")   " };
+  static const char* const REST[5]    = { "  /\\___/\\   ", " /       \\  ", "== o   o == ", " \\   w   / ", "  \\_____/  " };
+  static const char* const LOOK_L[5]  = { "  /\\___/\\   ", " /       \\  ", "==o   o  ==", " \\   w   / ", "  \\_____/  " };
+  static const char* const LOOK_R[5]  = { "  /\\___/\\   ", " /       \\  ", "==  o   o== ", " \\   w   / ", "  \\_____/  " };
+  static const char* const BLINK[5]   = { "  /\\___/\\   ", " /       \\  ", "== -   - == ", " \\   w   / ", "  \\_____/  " };
+  static const char* const SLOW_BL[5] = { "  /\\___/\\   ", " /       \\  ", "== _   _ == ", " \\       / ", "  \\_____/  " };
+  static const char* const EAR_L[5]   = { " <\\___/\\    ", " /       \\  ", "== o   o == ", " \\       / ", "  \\_____/  " };
+  static const char* const EAR_R[5]   = { "  /\\___/>   ", " /       \\  ", "== o   o == ", " \\       / ", "  \\_____/  " };
+  static const char* const TAIL_L[5]  = { "  /\\___/\\   ", " /       \\  ", "== o   o == ", " \\       / ", "  \\_____/  " };
+  static const char* const TAIL_R[5]  = { "  /\\___/\\   ", " /       \\  ", "== o   o == ", " \\       / ", "  \\_____/  " };
+  static const char* const GROOM[5]   = { "  /\\___/\\   ", " /       \\  ", "== ^   ^ == ", " \\   w   / ", "  \\_____/  " };
 
   const char* const* P[10] = { REST, LOOK_L, LOOK_R, BLINK, SLOW_BL, EAR_L, EAR_R, TAIL_L, TAIL_R, GROOM };
   static const uint8_t SEQ[] = {
@@ -68,24 +71,24 @@ static void doIdle(uint32_t t) {
     0,0,4,0
   };
   uint8_t beat = (t / 5) % sizeof(SEQ);
-  buddyPrintSprite(P[SEQ[beat]], 5, 0, 0xC2A6);
+  buddyPrintSprite(P[SEQ[beat]], 5, -2, 0xC2A6);
 }
 
-// ─── BUSY ───  ~10s cycle, 6 poses + dot ticker (knocking-things-off-table energy)
+// ─── BUSY ───  10s cycle, 6 poses + dot ticker
 static void doBusy(uint32_t t) {
-  static const char* const PAW_UP[5]  = { "      .     ", "   /\\_/\\    ", "  ( o   o ) ", "  (  w   )/ ", "  (\")_(\")   " };
-  static const char* const PAW_TAP[5] = { "    .       ", "   /\\_/\\    ", "  ( o   o ) ", "  (  w   )_ ", "  (\")_(\")   " };
-  static const char* const STARE[5]   = { "            ", "   /\\_/\\    ", "  ( O   O ) ", "  (  w   )  ", "  (\")_(\")   " };
-  static const char* const NUDGE[5]   = { "    o       ", "   /\\_/\\    ", "  ( o   o ) ", "  ( -w   )  ", "  (\")_(\")   " };
-  static const char* const SHOVE[5]   = { "  o         ", "   /\\_/\\    ", "  ( o   o ) ", "  (-w    )  ", "  (\")_(\")   " };
-  static const char* const SMUG[5]    = { "            ", "   /\\_/\\    ", "  ( -   - ) ", "  (  w   )  ", "  (\")_(\")   " };
+  static const char* const PAW_UP[5]  = { "  /\\___/\\   ", " /       \\  ", "== o   o == ", " \\    .  / ", "  \\_____/  " };
+  static const char* const PAW_TAP[5] = { "  /\\___/\\   ", " /       \\  ", "== o   o == ", " \\   .   / ", "  \\_____/  " };
+  static const char* const STARE[5]   = { "  /\\___/\\   ", " /       \\  ", "== O   O == ", " \\       / ", "  \\_____/  " };
+  static const char* const NUDGE[5]   = { "  /\\___/\\   ", " /       \\  ", "== o   o == ", " \\   o   / ", "  \\_____/  " };
+  static const char* const SHOVE[5]   = { "  /\\___/\\   ", " /       \\  ", "== o   o == ", " \\  o    / ", "  \\_____/  " };
+  static const char* const SMUG[5]    = { "  /\\___/\\   ", " /       \\  ", "== -   - == ", " \\   -   / ", "  \\_____/  " };
 
   const char* const* P[6] = { PAW_UP, PAW_TAP, STARE, NUDGE, SHOVE, SMUG };
   static const uint8_t SEQ[] = {
     2,2,2, 0,1,0,1, 3,4,3,4, 5,5, 2,2, 0,1,0,1, 5,2
   };
   uint8_t beat = (t / 5) % sizeof(SEQ);
-  buddyPrintSprite(P[SEQ[beat]], 5, 0, 0xC2A6);
+  buddyPrintSprite(P[SEQ[beat]], 5, -2, 0xC2A6);
 
   static const char* const DOTS[] = { ".  ", ".. ", "...", " ..", "  .", "   " };
   buddySetColor(BUDDY_WHITE);
@@ -93,14 +96,14 @@ static void doBusy(uint32_t t) {
   buddyPrint(DOTS[t % 6]);
 }
 
-// ─── ATTENTION ───  ~8s cycle, 6 poses + ! pulse (ears up, dilated pupils)
+// ─── ATTENTION ───  8s cycle, 6 poses + ! pulse
 static void doAttention(uint32_t t) {
-  static const char* const ALERT[5]   = { "            ", "   /^_^\\    ", "  ( O   O ) ", "  (  v   )  ", "  (\")_(\")   " };
-  static const char* const SCAN_L[5]  = { "            ", "   /^_^\\    ", "  (O    O ) ", "  (  v   )  ", "  (\")_(\")   " };
-  static const char* const SCAN_R[5]  = { "            ", "   /^_^\\    ", "  ( O    O) ", "  (  v   )  ", "  (\")_(\")   " };
-  static const char* const SCAN_U[5]  = { "            ", "   /^_^\\    ", "  ( ^   ^ ) ", "  (  v   )  ", "  (\")_(\")   " };
-  static const char* const CROUCH[5]  = { "            ", "   /^_^\\    ", " /( O   O )\\", " (   v    ) ", " /(\")_(\")\\  " };
-  static const char* const HISS[5]    = { "            ", "   /^_^\\    ", "  ( O   O ) ", "  (  >   )  ", "  (\")_(\")   " };
+  static const char* const ALERT[5]   = { "  /\\___/\\   ", " /       \\  ", "== O   O == ", " \\       / ", "  \\_____/  " };
+  static const char* const SCAN_L[5]  = { "  /\\___/\\   ", " /       \\  ", "==O    O == ", " \\       / ", "  \\_____/  " };
+  static const char* const SCAN_R[5]  = { "  /\\___/\\   ", " /       \\  ", "== O    O== ", " \\       / ", "  \\_____/  " };
+  static const char* const SCAN_U[5]  = { "  /\\___/\\   ", " /       \\  ", "== ^   ^ == ", " \\       / ", "  \\_____/  " };
+  static const char* const CROUCH[5]  = { " /\\___/\\    ", " /       \\  ", "== O   O == ", " /\\     /\\ ", " /\\_____/\\ " };
+  static const char* const HISS[5]    = { "  /\\___/\\   ", " /       \\  ", "== O   O == ", " \\   >   / ", "  \\_____/  " };
 
   const char* const* P[6] = { ALERT, SCAN_L, SCAN_R, SCAN_U, CROUCH, HISS };
   static const uint8_t SEQ[] = {
@@ -109,7 +112,7 @@ static void doAttention(uint32_t t) {
   uint8_t beat = (t / 5) % sizeof(SEQ);
   uint8_t pose = SEQ[beat];
   int xOff = (pose == 4) ? ((t & 1) ? 1 : -1) : 0;
-  buddyPrintSprite(P[pose], 5, 0, 0xC2A6, xOff);
+  buddyPrintSprite(P[pose], 5, -2, 0xC2A6, xOff);
 
   if ((t / 2) & 1) {
     buddySetColor(BUDDY_YEL);
@@ -123,20 +126,20 @@ static void doAttention(uint32_t t) {
   }
 }
 
-// ─── CELEBRATE ───  ~5s cycle, 6 poses + confetti rain (zoomies)
+// ─── CELEBRATE ───  5s cycle, 6 poses + confetti rain
 static void doCelebrate(uint32_t t) {
-  static const char* const CROUCH[5]  = { "            ", "   /\\_/\\    ", "  ( ^   ^ ) ", "  (  W   )  ", " /(\")_(\")\\  " };
-  static const char* const JUMP[5]    = { "  \\^   ^/   ", "    /\\_/\\   ", "  ( ^   ^ ) ", "  (  W   )  ", "  (\")_(\")   " };
-  static const char* const PEAK[5]    = { "  \\^   ^/   ", "    /\\_/\\   ", "  ( * * * ) ", "  (  W   )  ", "  (\")_(\")~  " };
-  static const char* const SPIN_L[5]  = { "            ", "   /\\_/\\    ", "  ( <   < ) ", "  (  W   ) /", " ~(\")_(\")   " };
-  static const char* const SPIN_R[5]  = { "            ", "   /\\_/\\    ", "  ( >   > ) ", " \\(  W   )  ", "  (\")_(\")~  " };
-  static const char* const POSE[5]    = { "    \\o/     ", "   /\\_/\\    ", "  ( ^   ^ ) ", " /(  W   )\\ ", "  (\")_(\")   " };
+  static const char* const CROUCH[5]  = { "  /\\___/\\   ", " /       \\  ", "== ^   ^ == ", " /\\     /\\ ", " /\\_____/\\ " };
+  static const char* const JUMP[5]    = { "  \\^   ^/   ", "  /\\___/\\   ", "== ^   ^ == ", " \\       / ", "  \\_____/  " };
+  static const char* const PEAK[5]    = { "  \\^   ^/   ", "  /\\___/\\   ", "== *   * == ", " \\       / ", "  \\_____/  " };
+  static const char* const SPIN_L[5]  = { "  /\\___/\\   ", " /       \\  ", "== <   < == ", " \\       / ", "  \\_____/  " };
+  static const char* const SPIN_R[5]  = { "  /\\___/\\   ", " /       \\  ", "== >   > == ", " \\       / ", "  \\_____/  " };
+  static const char* const POSE[5]    = { "    \\o/     ", "  /\\___/\\   ", "== ^   ^ == ", " \\   w   / ", "  \\_____/  " };
 
   const char* const* P[6] = { CROUCH, JUMP, PEAK, SPIN_L, SPIN_R, POSE };
   static const uint8_t SEQ[] = { 0,1,2,1,0, 3,4,3,4, 0,1,2,1,0, 5,5 };
   static const int8_t Y_SHIFT[] = { 0,-3,-6,-3,0, 0,0,0,0, 0,-3,-6,-3,0, 0,0 };
   uint8_t beat = (t / 3) % sizeof(SEQ);
-  buddyPrintSprite(P[SEQ[beat]], 5, Y_SHIFT[beat], 0xC2A6);
+  buddyPrintSprite(P[SEQ[beat]], 5, -2 + Y_SHIFT[beat], 0xC2A6);
 
   static const uint16_t cols[] = { BUDDY_YEL, BUDDY_HEART, BUDDY_CYAN, BUDDY_WHITE, BUDDY_GREEN };
   for (int i = 0; i < 6; i++) {
@@ -150,19 +153,19 @@ static void doCelebrate(uint32_t t) {
   }
 }
 
-// ─── DIZZY ───  ~6s cycle, 5 poses + orbiting stars (chasing own tail)
+// ─── DIZZY ───  6s cycle, 5 poses + orbiting stars
 static void doDizzy(uint32_t t) {
-  static const char* const TILT_L[5]  = { "            ", "  /\\_/\\     ", " ( @   @ )  ", " (   ~~  )  ", " (\")_(\")    " };
-  static const char* const TILT_R[5]  = { "            ", "    /\\_/\\   ", "  ( @   @ ) ", "  (  ~~  )  ", "    (\")_(\") " };
-  static const char* const WOOZY[5]   = { "            ", "   /\\_/\\    ", "  ( x   @ ) ", "  (  v   )  ", "  (\")_(\")~  " };
-  static const char* const WOOZY2[5]  = { "            ", "   /\\_/\\    ", "  ( @   x ) ", "  (  v   )  ", " ~(\")_(\")   " };
-  static const char* const SPLAT[5]   = { "            ", "   /\\_/\\    ", "  ( @   @ ) ", "  (  -   )  ", " /(\")_(\")\\~ " };
+  static const char* const TILT_L[5]  = { " /\\___/\\    ", " /       \\  ", "== @   @ == ", " \\       / ", "  \\_____/  " };
+  static const char* const TILT_R[5]  = { "    /\\___/\\ ", " /       \\  ", "== @   @ == ", " \\       / ", "  \\_____/  " };
+  static const char* const WOOZY[5]   = { "  /\\___/\\   ", " /       \\  ", "== x   @ == ", " \\       / ", "  \\_____/  " };
+  static const char* const WOOZY2[5]  = { "  /\\___/\\   ", " /       \\  ", "== @   x == ", " \\       / ", "  \\_____/  " };
+  static const char* const SPLAT[5]   = { "  /\\___/\\   ", " /       \\  ", "== @   @ == ", " /\\     /\\ ", " /\\_____/\\ " };
 
   const char* const* P[5] = { TILT_L, TILT_R, WOOZY, WOOZY2, SPLAT };
   static const uint8_t SEQ[] = { 0,1,0,1, 2,3, 0,1,0,1, 4,4, 2,3 };
   static const int8_t X_SHIFT[] = { -3,3,-3,3, 0,0, -3,3,-3,3, 0,0, 0,0 };
   uint8_t beat = (t / 4) % sizeof(SEQ);
-  buddyPrintSprite(P[SEQ[beat]], 5, 0, 0xC2A6, X_SHIFT[beat]);
+  buddyPrintSprite(P[SEQ[beat]], 5, -2, 0xC2A6, X_SHIFT[beat]);
 
   static const int8_t OX[] = { 0, 5, 7, 5, 0, -5, -7, -5 };
   static const int8_t OY[] = { -5, -3, 0, 3, 5, 3, 0, -3 };
@@ -176,13 +179,13 @@ static void doDizzy(uint32_t t) {
   buddyPrint("*");
 }
 
-// ─── HEART ───  ~10s cycle, 5 poses + rising hearts (smitten purr-monster)
+// ─── HEART ───  10s cycle, 5 poses + rising hearts
 static void doHeart(uint32_t t) {
-  static const char* const DREAMY[5]  = { "            ", "   /\\_/\\    ", "  ( ^   ^ ) ", "  (  u   )  ", "  (\")_(\")~  " };
-  static const char* const BLUSH[5]   = { "            ", "   /\\_/\\    ", "  (#^   ^#) ", "  (  u   )  ", "  (\")_(\")   " };
-  static const char* const HEART_E[5] = { "            ", "   /\\_/\\    ", "  ( <3 <3 ) ", "  (  u   )  ", "  (\")_(\")~  " };
-  static const char* const PURR[5]    = { "            ", "   /\\-/\\    ", "  ( ~   ~ ) ", "  (  u   )  ", " ~(\")_(\")~  " };
-  static const char* const HEAD_T[5]  = { "            ", "   /\\_/\\    ", "  ( ^   - ) ", "  (  u   )  ", "  (\")_(\")   " };
+  static const char* const DREAMY[5]  = { "  /\\___/\\   ", " /       \\  ", "== ^   ^ == ", " \\   w   / ", "  \\_____/  " };
+  static const char* const BLUSH[5]   = { "  /\\___/\\   ", " /       \\  ", "== ^   ^ == ", " \\   w   / ", "  \\_____/  " };
+  static const char* const HEART_E[5] = { "  /\\___/\\   ", " /       \\  ", "==<3  <3== ", " \\   w   / ", "  \\_____/  " };
+  static const char* const PURR[5]    = { "  /\\___/\\   ", " /       \\  ", "== u   u == ", " \\   w   / ", "  \\_____/  " };
+  static const char* const HEAD_T[5]  = { "  /\\___/\\   ", " /       \\  ", "== ^   - == ", " \\   w   / ", "  \\_____/  " };
 
   const char* const* P[5] = { DREAMY, BLUSH, HEART_E, PURR, HEAD_T };
   static const uint8_t SEQ[] = {
@@ -190,7 +193,7 @@ static void doHeart(uint32_t t) {
   };
   static const int8_t Y_BOB[] = { 0,-1,0,-1, 0,-1,0, -1,0,0, -1,0,0,0, -1,0,-1,0, -1,0 };
   uint8_t beat = (t / 5) % sizeof(SEQ);
-  buddyPrintSprite(P[SEQ[beat]], 5, Y_BOB[beat], 0xC2A6);
+  buddyPrintSprite(P[SEQ[beat]], 5, -2 + Y_BOB[beat], 0xC2A6);
 
   buddySetColor(BUDDY_HEART);
   for (int i = 0; i < 5; i++) {
