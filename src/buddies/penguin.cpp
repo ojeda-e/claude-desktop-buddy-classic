@@ -177,7 +177,7 @@ static void doDizzy(uint32_t t) {
 static void doHeart(uint32_t t) {
   static const char* const DREAMY[5]  = { "   .---.    ", "  /^ v ^\\   ", " /| ___ |\\  ", "  \\(___)/   ", "   ^^ ^^    " };
   static const char* const BLUSH[5]   = { "   .---.    ", "  /#^v^#\\   ", " /| ___ |\\  ", "  \\(___)/   ", "   ^^ ^^    " };
-  static const char* const EYES_C[5]  = { "   .---.    ", "  /<3v<3\\   ", " /| ___ |\\  ", "  \\(___)/   ", "   ^^ ^^    " };
+  static const char* const EYES_C[5]  = { "   .---.    ", "  /o v o\\   ", " /| ___ |\\  ", "  \\(___)/   ", "   ^^ ^^    " };
   static const char* const TWIRL[5]   = { "   .---.    ", "  /@ v @\\   ", " \\| ___ |\\  ", "  \\(___)/   ", "   __ ^^    " };
   static const char* const SIGH[5]    = { "   .---.    ", "  /- o -\\   ", "  | ___ |   ", "  \\(___)/   ", "   ^^ ^^    " };
 
