@@ -439,6 +439,12 @@ static const char* const MON[] = {
 };
 static const char* const DOW[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
 
+static void drawFit(const char* s, int x, int y) {
+  spr.setTextSize(2);
+  if (spr.textWidth(s) > W) spr.setTextSize(1);
+  spr.drawString(s, x, y);
+}
+
 static uint8_t clockDow() { return _clkDt.WeekDay % 7; }
 static void drawClock() {
   const Palette& p = characterPalette();
@@ -453,7 +459,7 @@ static void drawClock() {
     static const int CLOCK_TOP = 82;
     spr.fillRect(0, CLOCK_TOP, W, H - CLOCK_TOP, p.bg);
     spr.setTextDatum(MC_DATUM);
-    spr.setTextSize(2); spr.setTextColor(p.body, p.bg);    spr.drawString(petName(), CX, CLOCK_TOP + 8);
+    spr.setTextColor(p.body, p.bg);                        drawFit(petName(), CX, CLOCK_TOP + 8);
     spr.setTextSize(2); spr.setTextColor(p.text, p.bg);    spr.drawString(hm, CX, 112);
     spr.setTextSize(1); spr.setTextColor(p.textDim, p.bg); spr.drawString(ss, CX, 132);
                                                         spr.drawString(dl, CX, 146);
@@ -1052,8 +1058,8 @@ void setup() {
     if (ownerName()[0]) {
       char line[40];
       snprintf(line, sizeof(line), "%s's", ownerName());
-      spr.setTextColor(p.text, p.bg);   spr.drawString(line, W/2, H/2 - 12);
-      spr.setTextColor(p.body, p.bg);   spr.drawString(petName(), W/2, H/2 + 12);
+      spr.setTextColor(p.text, p.bg);   drawFit(line, W/2, H/2 - 12);
+      spr.setTextColor(p.body, p.bg);   drawFit(petName(), W/2, H/2 + 12);
     } else {
       // First boot, no owner pushed yet — say hi.
       spr.setTextColor(p.body, p.bg);   spr.drawString("Hello!", W/2, H/2 - 12);
